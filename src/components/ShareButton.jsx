@@ -62,7 +62,9 @@ export default function ShareButton({ poll, compact = false }) {
           <div><h2 className="font-display text-lg font-semibold">Share this poll</h2><p className="text-xs text-[#6B7280]">Your link includes a preview card where supported.</p></div>
           <button type="button" onClick={() => dialog.current.close()} aria-label="Close share preview" className="rounded-full p-2 text-[#6B7280] hover:bg-[#F3F4F6] hover:text-[#0F0F0F]">✕</button>
         </div>
-        <Image src={`${path}/opengraph-image`} alt={`Preview card for ${poll.question}`} width={1200} height={630} unoptimized className="h-auto w-full border-y border-[#DDE8E2]" />
+        <Link href={path} onClick={() => dialog.current.close()} aria-label={`Open poll: ${poll.question}`} className="block hover:opacity-95 focus-visible:outline-2 focus-visible:outline-[#1B4332]">
+          <Image src={`${path}/opengraph-image`} alt={`Preview card for ${poll.question}`} width={1200} height={630} unoptimized className="h-auto w-full border-y border-[#DDE8E2]" />
+        </Link>
         <div className="px-5 py-5">
           <label htmlFor={`share-link-${poll.id}`} className="mb-2 block text-xs font-semibold text-[#374151]">Poll link</label>
           <input id={`share-link-${poll.id}`} ref={linkInput} value={url} onFocus={(event) => event.target.select()} readOnly className="w-full rounded-lg border border-[#DDE8E2] bg-[#F7FBF9] px-3 py-2 text-sm text-[#374151]" />

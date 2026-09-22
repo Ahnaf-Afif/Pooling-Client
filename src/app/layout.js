@@ -18,7 +18,7 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className="h-full scroll-smooth">
+    <html lang="en" data-scroll-behavior="smooth" className="h-full scroll-smooth">
       <body className="flex min-h-full flex-col">
         <Navbar />
         <div className="flex-1">{children}</div>
