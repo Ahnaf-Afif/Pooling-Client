@@ -16,20 +16,25 @@ const STEPS = [
   ["03", "See Results", "Watch every vote update the results and discover the community's view."],
 ];
 
-export default function HomePage({ showTrending = false, initialCategory }) {
+export default function HomePage({ showTrending = false, initialCategory, initialData }) {
   const validCategory = CATEGORIES.includes(initialCategory) ? initialCategory : "All";
   const [activeCategory, setActiveCategory] = useState(validCategory);
-  const [polls, setPolls] = useState([]);
-  const [stats, setStats] = useState(EMPTY_STATS);
-  const [status, setStatus] = useState("loading");
+  const [polls, setPolls] = useState(initialData?.polls || []);
+  const [stats, setStats] = useState(initialData?.stats || EMPTY_STATS);
+  const [status, setStatus] = useState(initialData ? "ready" : "loading");
   const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(false);
+  const [hasMore, setHasMore] = useState(initialData?.hasMore || false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [loadMoreError, setLoadMoreError] = useState("");
   const [retryKey, setRetryKey] = useState(0);
   const requestVersion = useRef(0);
+  const useInitialData = useRef(Boolean(initialData));
 
   useEffect(() => {
+    if (useInitialData.current) {
+      useInitialData.current = false;
+      return;
+    }
     let active = true;
     getPolls({ category: activeCategory, trending: showTrending })
       .then((data) => {
