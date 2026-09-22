@@ -62,7 +62,7 @@ function Results() {
 
       {!winner && <p className="mt-8 rounded-xl bg-[#F5F5F4] px-5 py-4 text-sm text-[#6B7280]">No votes yet. Share this poll to collect the first response.</p>}
       <div className="mt-10 flex flex-wrap gap-3 border-t border-[#E5E7EB] pt-7">
-        <ShareButton question={poll.question} pollId={poll.id} />
+        <ShareButton poll={poll} />
         <Link href="/create" className="rounded-full border border-[#1B4332] px-5 py-3 text-sm font-semibold text-[#1B4332] hover:bg-[#F0F7F4]">Create your own poll</Link>
       </div>
     </main>

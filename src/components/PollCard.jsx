@@ -1,5 +1,6 @@
 import Link from "next/link";
 import CategoryBadge from "./CategoryBadge";
+import ShareButton from "./ShareButton";
 
 export default function PollCard({ poll }) {
   const topOption =
@@ -10,10 +11,8 @@ export default function PollCard({ poll }) {
       : null;
 
   return (
-    <Link
-      href={`/poll/${poll.id}`}
-      className="group block bg-white border border-[#E5E7EB] rounded-2xl p-5 hover:border-[#1B4332] hover:shadow-md transition-all duration-200"
-    >
+    <article className="group bg-white border border-[#E5E7EB] rounded-2xl p-5 hover:border-[#1B4332] hover:shadow-md transition-all duration-200">
+      <Link href={`/poll/${poll.id}`} className="block focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B4332]">
       <div className="flex items-start justify-between gap-2 mb-3">
         <CategoryBadge category={poll.category} />
 
@@ -93,13 +92,15 @@ export default function PollCard({ poll }) {
         )}
       </div>
 
+      </Link>
+
       <div className="flex items-center justify-between text-xs text-[#9CA3AF] border-t border-[#F3F4F6] pt-3">
         <span>{poll.totalVotes.toLocaleString("en-BD")} votes</span>
-
-        <span className="text-[#1B4332] font-medium group-hover:underline">
-          Vote →
-        </span>
+        <div className="flex items-center gap-2">
+          <ShareButton poll={poll} compact />
+          <Link href={`/poll/${poll.id}`} className="rounded-full px-2 py-1.5 font-medium text-[#1B4332] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B4332]">Vote →</Link>
+        </div>
       </div>
-    </Link>
+    </article>
   );
 }

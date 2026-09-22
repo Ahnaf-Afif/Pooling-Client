@@ -23,7 +23,7 @@ export default function PollPage() {
     getPoll(id)
       .then((data) => {
         setPoll(data.poll);
-        setPreviousVote(localStorage.getItem(`voted:${id}`) || "");
+        try { setPreviousVote(localStorage.getItem(`voted:${id}`) || ""); } catch { /* Voting still works when storage is disabled. */ }
         setStatus("ready");
       })
       .catch((requestError) => {
@@ -39,7 +39,7 @@ export default function PollPage() {
     setError("");
     try {
       await submitVote(id, selected);
-      localStorage.setItem(`voted:${id}`, selected);
+      try { localStorage.setItem(`voted:${id}`, selected); } catch { /* The server has already recorded the vote. */ }
       router.push(`/poll/${id}/results?voted=${encodeURIComponent(selected)}`);
     } catch (requestError) {
       setError(requestError.message);

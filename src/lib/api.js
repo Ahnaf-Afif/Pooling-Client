@@ -14,7 +14,12 @@ async function request(path, options) {
   return data;
 }
 
-export const getPolls = () => request("/polls");
+export const getPolls = ({ category = "All", trending = false, page = 1, limit = 12 } = {}) => {
+  const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+  if (category !== "All") params.set("category", category);
+  if (trending) params.set("trending", "true");
+  return request(`/polls?${params}`);
+};
 export const getPoll = (id) => request(`/polls/${encodeURIComponent(id)}`);
 export const createPoll = (poll) =>
   request("/polls", { method: "POST", body: JSON.stringify(poll) });

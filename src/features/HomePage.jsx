@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import PollCard from "@/components/PollCard";
+import ShareButton from "@/components/ShareButton";
 import StatusPanel from "@/components/StatusPanel";
 import { getPolls } from "@/lib/api";
 
@@ -21,38 +22,66 @@ export default function HomePage({ showTrending = false, initialCategory }) {
   const [polls, setPolls] = useState([]);
   const [stats, setStats] = useState(EMPTY_STATS);
   const [status, setStatus] = useState("loading");
-
-  const loadPolls = useCallback(async () => {
-    setStatus("loading");
-    try {
-      const data = await getPolls();
-      setPolls(data.polls);
-      setStats(data.stats);
-      setStatus("ready");
-    } catch {
-      setStatus("error");
-    }
-  }, []);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [loadMoreError, setLoadMoreError] = useState("");
+  const [retryKey, setRetryKey] = useState(0);
+  const requestVersion = useRef(0);
 
   useEffect(() => {
-    getPolls()
+    let active = true;
+    getPolls({ category: activeCategory, trending: showTrending })
       .then((data) => {
+        if (!active) return;
         setPolls(data.polls);
         setStats(data.stats);
+        setHasMore(data.hasMore);
+        setPage(1);
         setStatus("ready");
       })
-      .catch(() => setStatus("error"));
-  }, []);
+      .catch(() => { if (active) setStatus("error"); });
+    return () => { active = false; };
+  }, [activeCategory, showTrending, retryKey]);
 
-  const visiblePolls = useMemo(
-    () =>
-      polls.filter(
-        (poll) =>
-          (activeCategory === "All" || poll.category === activeCategory) &&
-          (!showTrending || poll.trending),
-      ),
-    [activeCategory, polls, showTrending],
-  );
+  function chooseCategory(category) {
+    if (category === activeCategory) return;
+    requestVersion.current += 1;
+    setActiveCategory(category);
+    setPolls([]);
+    setHasMore(false);
+    setLoadingMore(false);
+    setStatus("loading");
+    setLoadMoreError("");
+  }
+
+  function retry() {
+    requestVersion.current += 1;
+    setStatus("loading");
+    setLoadingMore(false);
+    setRetryKey((value) => value + 1);
+  }
+
+  async function loadMore() {
+    if (loadingMore || !hasMore) return;
+    const version = requestVersion.current;
+    setLoadingMore(true);
+    setLoadMoreError("");
+    try {
+      const nextPage = page + 1;
+      const data = await getPolls({ category: activeCategory, trending: showTrending, page: nextPage });
+      if (version !== requestVersion.current) return;
+      setPolls((current) => [...current, ...data.polls]);
+      setPage(nextPage);
+      setHasMore(data.hasMore);
+      setStats(data.stats);
+    } catch {
+      if (version === requestVersion.current) setLoadMoreError("Could not load more polls. Please try again.");
+    } finally {
+      if (version === requestVersion.current) setLoadingMore(false);
+    }
+  }
+
   const featuredPoll = polls.find((poll) => poll.trending) || polls[0];
 
   return (
@@ -101,7 +130,10 @@ export default function HomePage({ showTrending = false, initialCategory }) {
                     );
                   })}
                 </div>
-                <Link href={`/poll/${featuredPoll.id}`} className="mt-6 inline-block text-sm font-semibold text-[#1B4332] hover:underline">Vote now →</Link>
+                <div className="mt-6 flex items-center justify-between gap-3">
+                  <Link href={`/poll/${featuredPoll.id}`} className="text-sm font-semibold text-[#1B4332] hover:underline">Vote now →</Link>
+                  <ShareButton poll={featuredPoll} compact />
+                </div>
               </div>
             ) : (
               <div className="rounded-3xl border border-[#DDE8E2] bg-[#F7FBF9] p-8">
@@ -134,7 +166,7 @@ export default function HomePage({ showTrending = false, initialCategory }) {
           </div>
           <div aria-label="Filter by category" className="flex flex-wrap gap-2">
             {CATEGORIES.map((category) => (
-              <button key={category} type="button" aria-pressed={activeCategory === category} onClick={() => setActiveCategory(category)} className={`rounded-full border px-3.5 py-2 text-xs font-semibold transition-colors ${activeCategory === category ? "border-[#1B4332] bg-[#1B4332] text-white" : "border-[#E5E7EB] text-[#6B7280] hover:border-[#1B4332] hover:text-[#1B4332]"}`}>
+              <button key={category} type="button" aria-pressed={activeCategory === category} onClick={() => chooseCategory(category)} className={`rounded-full border px-3.5 py-2 text-xs font-semibold transition-colors ${activeCategory === category ? "border-[#1B4332] bg-[#1B4332] text-white" : "border-[#E5E7EB] text-[#6B7280] hover:border-[#1B4332] hover:text-[#1B4332]"}`}>
                 {category}
               </button>
             ))}
@@ -143,10 +175,11 @@ export default function HomePage({ showTrending = false, initialCategory }) {
 
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {status === "loading" && Array.from({ length: 6 }, (_, index) => <div key={index} className="h-72 animate-pulse rounded-2xl bg-[#F5F5F4]" />)}
-          {status === "error" && <StatusPanel title="We couldn't load the polls" message="The API may be starting up or temporarily unavailable." action={<button type="button" onClick={loadPolls} className="rounded-full bg-[#1B4332] px-5 py-2.5 text-sm font-semibold text-white">Try again</button>} />}
-          {status === "ready" && visiblePolls.map((poll) => <PollCard key={poll.id} poll={poll} />)}
-          {status === "ready" && visiblePolls.length === 0 && <StatusPanel title={showTrending ? "No trending polls yet" : "No polls here yet"} message="Start a thoughtful conversation. Your poll will appear here as soon as it is published." action={<Link href="/create" className="rounded-full bg-[#1B4332] px-5 py-2.5 text-sm font-semibold text-white">Create the first poll</Link>} />}
+          {status === "error" && <StatusPanel title="We couldn't load the polls" message="The API may be starting up or temporarily unavailable." action={<button type="button" onClick={retry} className="rounded-full bg-[#1B4332] px-5 py-2.5 text-sm font-semibold text-white">Try again</button>} />}
+          {status === "ready" && polls.map((poll) => <PollCard key={poll.id} poll={poll} />)}
+          {status === "ready" && polls.length === 0 && <StatusPanel title={showTrending ? "No trending polls yet" : "No polls here yet"} message="Start a thoughtful conversation. Your poll will appear here as soon as it is published." action={<Link href="/create" className="rounded-full bg-[#1B4332] px-5 py-2.5 text-sm font-semibold text-white">Create the first poll</Link>} />}
         </div>
+        {status === "ready" && hasMore && <div className="mt-9 text-center"><button type="button" onClick={loadMore} disabled={loadingMore} className="rounded-full border border-[#1B4332] px-6 py-2.5 text-sm font-semibold text-[#1B4332] hover:bg-[#F0F7F4] disabled:opacity-60">{loadingMore ? "Loading…" : "Load more polls"}</button>{loadMoreError && <p role="alert" className="mt-3 text-sm text-red-700">{loadMoreError}</p>}</div>}
       </section>
 
       <section id="how-it-works" className="scroll-mt-20 bg-[#0F0F0F] py-20 text-white">
