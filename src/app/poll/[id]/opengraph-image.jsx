@@ -17,6 +17,7 @@ export default async function Image({ params }) {
   ]);
 
   const question = poll?.question || "What do you think?";
+  const previewQuestion = question.length > 105 ? `${question.slice(0, 102)}…` : question;
   const options = poll?.options?.slice(0, 3) || [];
 
   return new ImageResponse(
@@ -32,13 +33,13 @@ export default async function Image({ params }) {
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", flex: 1, justifyContent: "center", marginTop: 22 }}>
-        <div style={{ display: "flex", fontSize: question.length > 100 ? 38 : question.length > 65 ? 44 : 52, fontWeight: 700, lineHeight: 1.28, marginBottom: 28, overflow: "hidden", maxHeight: 190 }}>
-          {question.length > 160 ? `${question.slice(0, 157)}…` : question}
+        <div style={{ display: "flex", fontSize: previewQuestion.length > 80 ? 38 : previewQuestion.length > 60 ? 44 : 52, fontWeight: 700, lineHeight: 1.28, marginBottom: 28, overflow: "hidden", maxHeight: 190 }}>
+          {previewQuestion}
         </div>
         {options.map((option, index) => (
           <div key={option.id || index} style={{ display: "flex", alignItems: "center", marginBottom: 10, padding: "12px 18px", minHeight: 57, border: "1px solid #C8DCD1", borderRadius: 15, background: "#FFFFFF", fontSize: 24 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, width: 29, height: 29, marginRight: 17, border: "2px solid #87AA98", borderRadius: 99 }} />
-            {option.label.length > 65 ? `${option.label.slice(0, 62)}…` : option.label}
+            {option.label.length > 50 ? `${option.label.slice(0, 47)}…` : option.label}
           </div>
         ))}
       </div>
