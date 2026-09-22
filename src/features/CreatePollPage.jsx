@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 
+import ShareButton from "@/components/ShareButton";
 import { createPoll } from "@/lib/api";
 
 const CATEGORIES = ["Tech", "Education", "Food", "Career", "Lifestyle", "Social"];
@@ -44,8 +45,9 @@ export default function CreatePollPage() {
         <h1 className="font-display mt-6 text-4xl font-semibold">Your poll is live</h1>
         <p className="mx-auto mt-3 max-w-lg text-[#6B7280]">Share it now and let the conversation begin.</p>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
-          <Link href={`/poll/${createdPoll.id}`} className="rounded-full bg-[#1B4332] px-6 py-3 text-sm font-semibold text-white">Open your poll</Link>
-          <Link href="/" className="rounded-full border border-[#E5E7EB] px-6 py-3 text-sm font-semibold text-[#374151]">Browse polls</Link>
+          <ShareButton poll={createdPoll} />
+          <Link href={`/poll/${createdPoll.id}`} className="rounded-full border border-[#1B4332] px-6 py-3 text-sm font-semibold text-[#1B4332] hover:bg-[#F0F7F4]">Open your poll</Link>
+          <Link href="/" className="rounded-full px-6 py-3 text-sm font-semibold text-[#374151] hover:underline">Browse polls</Link>
         </div>
       </main>
     );
