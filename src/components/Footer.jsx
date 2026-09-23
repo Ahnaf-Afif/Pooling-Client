@@ -50,6 +50,11 @@ export default function Footer() {
               </Link>
             </li>
             <li>
+              <Link href="/my-polls" className={linkClassName}>
+                My Polls
+              </Link>
+            </li>
+            <li>
               <Link href="/#how-it-works" className={linkClassName}>
                 How It Works
               </Link>

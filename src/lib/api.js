@@ -21,6 +21,10 @@ export const getPolls = ({ category = "All", trending = false, page = 1, limit =
   return request(`/polls?${params}`);
 };
 export const getPoll = (id) => request(`/polls/${encodeURIComponent(id)}`);
+export const getMyPolls = (ids) => {
+  const params = new URLSearchParams({ ids: ids.join(","), limit: "50" });
+  return request(`/polls?${params}`);
+};
 export const createPoll = (poll) =>
   request("/polls", { method: "POST", body: JSON.stringify(poll) });
 export const submitVote = (id, optionId) =>

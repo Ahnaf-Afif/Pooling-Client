@@ -24,3 +24,5 @@ NEXT_PUBLIC_SITE_URL=https://pooling-client.vercel.app
 If either variable is also set in the Vercel project settings, set it to the same value. Project settings override the file during a build. Redeploy after changing these build-time values. Never add the MongoDB connection string to this frontend project.
 
 Poll links expose their question and a generated card image through Open Graph and Twitter metadata. Messaging apps decide whether and when to show or refresh that preview; the share dialog also shows the card before sending the poll URL. Keep `NEXT_PUBLIC_SITE_URL` set to the public HTTPS frontend origin so preview image links point to the right deployment.
+
+Because this version has no user accounts, My Polls stores up to 50 created poll IDs in the current browser. It adds no private permissions and does not follow users across devices. Older polls can be restored locally by pasting their public link on the My Polls page.

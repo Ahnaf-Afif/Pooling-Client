@@ -52,6 +52,15 @@ export default function Navbar() {
             >
               Create Poll
             </Link>
+
+            <Link
+              href="/my-polls"
+              className={`hover:text-[#0F0F0F] transition-colors ${
+                pathname === "/my-polls" ? "text-[#0F0F0F]" : ""
+              }`}
+            >
+              My Polls
+            </Link>
           </nav>
 
           <Link
@@ -132,6 +141,16 @@ export default function Navbar() {
                 }`}
               >
                 Create Poll
+              </Link>
+
+              <Link
+                href="/my-polls"
+                onClick={() => setIsMenuOpen(false)}
+                className={`py-3 hover:text-[#0F0F0F] transition-colors ${
+                  pathname === "/my-polls" ? "text-[#0F0F0F]" : ""
+                }`}
+              >
+                My Polls
               </Link>
             </nav>
 

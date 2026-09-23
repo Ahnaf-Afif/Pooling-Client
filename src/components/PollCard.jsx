@@ -2,7 +2,7 @@ import Link from "next/link";
 import CategoryBadge from "./CategoryBadge";
 import ShareButton from "./ShareButton";
 
-export default function PollCard({ poll }) {
+export default function PollCard({ poll, isMine = false }) {
   const topOption =
     poll.options.length > 0
       ? poll.options.reduce((prev, current) =>
@@ -11,10 +11,13 @@ export default function PollCard({ poll }) {
       : null;
 
   return (
-    <article className="group bg-white border border-[#E5E7EB] rounded-2xl p-5 hover:border-[#1B4332] hover:shadow-md transition-all duration-200">
+    <article className={`group rounded-2xl border p-5 transition-all duration-200 hover:border-[#1B4332] hover:shadow-md ${isMine ? "border-[#BFD5C9] bg-[#FBFDFC] shadow-[inset_3px_0_0_#86A998]" : "border-[#E5E7EB] bg-white"}`}>
       <Link href={`/poll/${poll.id}`} className="block focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B4332]">
       <div className="flex items-start justify-between gap-2 mb-3">
-        <CategoryBadge category={poll.category} />
+        <div className="flex flex-wrap items-center gap-2">
+          <CategoryBadge category={poll.category} />
+          {isMine && <span className="rounded-full border border-[#C8DCD1] bg-white px-2 py-0.5 text-[11px] font-semibold text-[#456556]">Your poll</span>}
+        </div>
 
         {poll.trending && (
           <span className="text-xs font-medium text-[#C9971A] flex items-center gap-1">

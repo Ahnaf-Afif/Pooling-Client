@@ -7,6 +7,7 @@ import PollCard from "@/components/PollCard";
 import ShareButton from "@/components/ShareButton";
 import StatusPanel from "@/components/StatusPanel";
 import { getPolls } from "@/lib/api";
+import { useMyPollIds } from "@/lib/my-polls";
 
 const CATEGORIES = ["All", "Tech", "Education", "Food", "Career", "Lifestyle", "Social"];
 const EMPTY_STATS = { totalVotes: 0, activePolls: 0, categories: 0, trending: 0 };
@@ -29,6 +30,8 @@ export default function HomePage({ showTrending = false, initialCategory, initia
   const [retryKey, setRetryKey] = useState(0);
   const requestVersion = useRef(0);
   const useInitialData = useRef(Boolean(initialData));
+  const myPollIds = useMyPollIds();
+  const myPollIdSet = new Set(myPollIds);
 
   useEffect(() => {
     if (useInitialData.current) {
@@ -181,7 +184,7 @@ export default function HomePage({ showTrending = false, initialCategory, initia
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {status === "loading" && Array.from({ length: 6 }, (_, index) => <div key={index} className="h-72 animate-pulse rounded-2xl bg-[#F5F5F4]" />)}
           {status === "error" && <StatusPanel title="We couldn't load the polls" message="The API may be starting up or temporarily unavailable." action={<button type="button" onClick={retry} className="rounded-full bg-[#1B4332] px-5 py-2.5 text-sm font-semibold text-white">Try again</button>} />}
-          {status === "ready" && polls.map((poll) => <PollCard key={poll.id} poll={poll} />)}
+          {status === "ready" && polls.map((poll) => <PollCard key={poll.id} poll={poll} isMine={myPollIdSet.has(poll.id)} />)}
           {status === "ready" && polls.length === 0 && <StatusPanel title={showTrending ? "No trending polls yet" : "No polls here yet"} message="Start a thoughtful conversation. Your poll will appear here as soon as it is published." action={<Link href="/create" className="rounded-full bg-[#1B4332] px-5 py-2.5 text-sm font-semibold text-white">Create the first poll</Link>} />}
         </div>
         {status === "ready" && hasMore && <div className="mt-9 text-center"><button type="button" onClick={loadMore} disabled={loadingMore} className="rounded-full border border-[#1B4332] px-6 py-2.5 text-sm font-semibold text-[#1B4332] hover:bg-[#F0F7F4] disabled:opacity-60">{loadingMore ? "Loading…" : "Load more polls"}</button>{loadMoreError && <p role="alert" className="mt-3 text-sm text-red-700">{loadMoreError}</p>}</div>}
