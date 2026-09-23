@@ -3,19 +3,18 @@
 import Link from "next/link";
 import { useState } from "react";
 
+import AuthRequired from "@/components/AuthRequired";
 import ShareButton from "@/components/ShareButton";
 import { createPoll } from "@/lib/api";
-import { rememberMyPoll } from "@/lib/my-polls";
 
 const CATEGORIES = ["Tech", "Education", "Food", "Career", "Lifestyle", "Social"];
 
-export default function CreatePollPage() {
+function CreatePollForm() {
   const [question, setQuestion] = useState("");
   const [category, setCategory] = useState(CATEGORIES[0]);
   const [options, setOptions] = useState(["", ""]);
   const [error, setError] = useState("");
   const [createdPoll, setCreatedPoll] = useState(null);
-  const [ownershipSaved, setOwnershipSaved] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
   const updateOption = (index, value) => setOptions((items) => items.map((item, itemIndex) => itemIndex === index ? value : item));
@@ -32,7 +31,6 @@ export default function CreatePollPage() {
     setSubmitting(true);
     try {
       const { poll } = await createPoll({ question, category, options: cleanOptions });
-      setOwnershipSaved(rememberMyPoll(poll.id));
       setCreatedPoll(poll);
     } catch (requestError) {
       setError(requestError.message);
@@ -47,7 +45,6 @@ export default function CreatePollPage() {
         <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#F0F7F4] text-3xl" aria-hidden="true">✓</div>
         <h1 className="font-display mt-6 text-4xl font-semibold">Your poll is live</h1>
         <p className="mx-auto mt-3 max-w-lg text-[#6B7280]">Share it now and let the conversation begin.</p>
-        {!ownershipSaved && <p role="alert" className="mx-auto mt-3 max-w-lg text-sm text-amber-700">This browser blocked local storage, so the poll cannot appear automatically under My Polls. Keep its link somewhere safe.</p>}
         <div className="mt-8 flex flex-wrap justify-center gap-3">
           <ShareButton poll={createdPoll} />
           <Link href={`/poll/${createdPoll.id}`} className="rounded-full border border-[#1B4332] px-6 py-3 text-sm font-semibold text-[#1B4332] hover:bg-[#F0F7F4]">Open your poll</Link>
@@ -101,4 +98,8 @@ export default function CreatePollPage() {
       </form>
     </main>
   );
+}
+
+export default function CreatePollPage() {
+  return <AuthRequired message="Sign in with a verified account to create and manage polls."><CreatePollForm /></AuthRequired>;
 }

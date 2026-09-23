@@ -2,7 +2,7 @@ import MyPollsPage from "@/features/MyPollsPage";
 
 export const metadata = {
   title: "My Polls",
-  description: "View polls created in this browser.",
+  description: "View and manage polls created with your account.",
   robots: { index: false, follow: false },
 };
 

@@ -59,6 +59,8 @@ export default function Footer() {
                 How It Works
               </Link>
             </li>
+            <li><Link href="/privacy" className={linkClassName}>Privacy</Link></li>
+            <li><Link href="/terms" className={linkClassName}>Terms</Link></li>
           </ul>
         </nav>
 

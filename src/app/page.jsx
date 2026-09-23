@@ -1,6 +1,6 @@
 import HomePage from "@/features/HomePage";
 
-const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api").replace(/\/$/, "");
+const API_URL = (process.env.API_INTERNAL_URL || "http://localhost:5000/api").replace(/\/$/, "");
 
 async function loadInitialPolls(category, trending) {
   const query = new URLSearchParams({ page: "1", limit: "12" });

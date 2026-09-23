@@ -5,6 +5,7 @@ import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 
 import CategoryBadge from "@/components/CategoryBadge";
+import ReportButton from "@/components/ReportButton";
 import ShareButton from "@/components/ShareButton";
 import StatusPanel from "@/components/StatusPanel";
 import { getPoll } from "@/lib/api";
@@ -65,6 +66,7 @@ function Results() {
         <ShareButton poll={poll} />
         <Link href="/create" className="rounded-full border border-[#1B4332] px-5 py-3 text-sm font-semibold text-[#1B4332] hover:bg-[#F0F7F4]">Create your own poll</Link>
       </div>
+      <div className="mt-6 text-center"><ReportButton pollId={poll.id} /></div>
     </main>
   );
 }

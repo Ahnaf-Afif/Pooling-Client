@@ -6,8 +6,8 @@ import { useEffect, useRef, useState } from "react";
 import PollCard from "@/components/PollCard";
 import ShareButton from "@/components/ShareButton";
 import StatusPanel from "@/components/StatusPanel";
-import { getPolls } from "@/lib/api";
-import { useMyPollIds } from "@/lib/my-polls";
+import { getMyPolls, getPolls } from "@/lib/api";
+import { useSession } from "@/lib/auth-client";
 
 const CATEGORIES = ["All", "Tech", "Education", "Food", "Career", "Lifestyle", "Social"];
 const EMPTY_STATS = { totalVotes: 0, activePolls: 0, categories: 0, trending: 0 };
@@ -30,8 +30,21 @@ export default function HomePage({ showTrending = false, initialCategory, initia
   const [retryKey, setRetryKey] = useState(0);
   const requestVersion = useRef(0);
   const useInitialData = useRef(Boolean(initialData));
-  const myPollIds = useMyPollIds();
+  const { data: session } = useSession();
+  const [myPollIds, setMyPollIds] = useState([]);
   const myPollIdSet = new Set(myPollIds);
+
+  useEffect(() => {
+    let active = true;
+    if (!session?.user?.id) {
+      Promise.resolve().then(() => { if (active) setMyPollIds([]); });
+      return () => { active = false; };
+    }
+    getMyPolls()
+      .then((data) => { if (active) setMyPollIds(data.polls.map((poll) => poll.id)); })
+      .catch(() => { if (active) setMyPollIds([]); });
+    return () => { active = false; };
+  }, [session?.user?.id]);
 
   useEffect(() => {
     if (useInitialData.current) {

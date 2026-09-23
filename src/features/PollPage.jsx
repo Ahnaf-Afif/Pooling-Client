@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import CategoryBadge from "@/components/CategoryBadge";
+import ReportButton from "@/components/ReportButton";
 import StatusPanel from "@/components/StatusPanel";
 import { getPoll, submitVote } from "@/lib/api";
 
@@ -18,6 +19,7 @@ export default function PollPage() {
   const [status, setStatus] = useState("loading");
   const [error, setError] = useState("");
   const [previousVote, setPreviousVote] = useState("");
+  const [alreadyVoted, setAlreadyVoted] = useState(false);
 
   useEffect(() => {
     getPoll(id)
@@ -43,6 +45,7 @@ export default function PollPage() {
       router.push(`/poll/${id}/results?voted=${encodeURIComponent(selected)}`);
     } catch (requestError) {
       setError(requestError.message);
+      if (requestError.status === 409 && /already voted/i.test(requestError.message)) setAlreadyVoted(true);
       setStatus("ready");
     }
   }
@@ -63,6 +66,8 @@ export default function PollPage() {
           <p className="mt-2 text-sm text-[#6B7280]">You can return to the live results at any time.</p>
           <Link href={`/poll/${id}/results?voted=${encodeURIComponent(previousVote)}`} className="mt-5 inline-block rounded-full bg-[#1B4332] px-5 py-2.5 text-sm font-semibold text-white">View results</Link>
         </div>
+      ) : poll.status && poll.status !== "active" ? (
+        <div className="mt-10 rounded-2xl border border-[#D1D5DB] bg-[#F9FAFB] p-6 text-center"><p className="font-display text-xl font-semibold">Voting is {poll.status}</p><p className="mt-2 text-sm text-[#6B7280]">This poll is no longer accepting responses.</p><Link href={`/poll/${id}/results`} className="mt-5 inline-block rounded-full bg-[#1B4332] px-5 py-2.5 text-sm font-semibold text-white">View final results</Link></div>
       ) : <form onSubmit={handleSubmit} className="mt-10">
         <fieldset className="space-y-3">
           <legend className="sr-only">Choose your answer</legend>
@@ -76,9 +81,11 @@ export default function PollPage() {
           ))}
         </fieldset>
         {error && <p role="alert" className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
+        {alreadyVoted && <Link href={`/poll/${id}/results`} className="mt-4 block text-center text-sm font-semibold text-[#1B4332] hover:underline">View results →</Link>}
         <button type="submit" disabled={!selected || status === "submitting"} className="mt-7 w-full rounded-xl bg-[#1B4332] py-4 font-semibold text-white hover:bg-[#15362A] disabled:cursor-not-allowed disabled:bg-[#E5E7EB] disabled:text-[#9CA3AF]">{status === "submitting" ? "Submitting…" : "Submit Vote"}</button>
       </form>}
-      {!previousVote && <p className="mt-4 text-center text-xs text-[#9CA3AF]">Results are revealed after you vote.</p>}
+      {!previousVote && (!poll.status || poll.status === "active") && <p className="mt-4 text-center text-xs text-[#9CA3AF]">Results are revealed after you vote.</p>}
+      <div className="mt-8 border-t border-[#E5E7EB] pt-5 text-center"><ReportButton pollId={poll.id} /></div>
     </main>
   );
 }

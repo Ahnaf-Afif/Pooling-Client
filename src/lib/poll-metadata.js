@@ -1,4 +1,4 @@
-const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api").replace(/\/$/, "");
+const API_URL = (process.env.API_INTERNAL_URL || "http://localhost:5000/api").replace(/\/$/, "");
 
 export async function getPollForPreview(id) {
   const response = await fetch(`${API_URL}/polls/${encodeURIComponent(id)}`, {

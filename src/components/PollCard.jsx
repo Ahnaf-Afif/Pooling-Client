@@ -17,6 +17,7 @@ export default function PollCard({ poll, isMine = false }) {
         <div className="flex flex-wrap items-center gap-2">
           <CategoryBadge category={poll.category} />
           {isMine && <span className="rounded-full border border-[#C8DCD1] bg-white px-2 py-0.5 text-[11px] font-semibold text-[#456556]">Your poll</span>}
+          {poll.status && poll.status !== "active" && <span className="rounded-full bg-[#F3F4F6] px-2 py-0.5 text-[11px] font-semibold capitalize text-[#6B7280]">{poll.status}</span>}
         </div>
 
         {poll.trending && (
@@ -101,7 +102,8 @@ export default function PollCard({ poll, isMine = false }) {
         <span>{poll.totalVotes.toLocaleString("en-BD")} votes</span>
         <div className="flex items-center gap-2">
           <ShareButton poll={poll} compact />
-          <Link href={`/poll/${poll.id}`} className="rounded-full px-2 py-1.5 font-medium text-[#1B4332] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B4332]">Vote →</Link>
+          {isMine && <Link href={`/my-polls/${poll.id}`} className="rounded-full px-2 py-1.5 font-semibold text-[#1B4332] hover:bg-[#F0F7F4]">Manage</Link>}
+          <Link href={poll.status && poll.status !== "active" ? `/poll/${poll.id}/results` : `/poll/${poll.id}`} className="rounded-full px-2 py-1.5 font-medium text-[#1B4332] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B4332]">{poll.status && poll.status !== "active" ? "Results →" : "Vote →"}</Link>
         </div>
       </div>
     </article>
