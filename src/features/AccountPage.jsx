@@ -45,6 +45,7 @@ function AccountDetails() {
       <div className="mt-6 flex flex-wrap gap-3">
         <Link href="/my-polls" className="rounded-full bg-[#1B4332] px-5 py-2.5 text-sm font-semibold text-white">Manage my polls</Link>
         {(role === "admin" || role === "moderator") && <Link href="/moderation" className="rounded-full border border-[#1B4332] px-5 py-2.5 text-sm font-semibold text-[#1B4332]">Moderation</Link>}
+        {role === "admin" && <Link href="/admin/users" className="rounded-full border border-[#1B4332] px-5 py-2.5 text-sm font-semibold text-[#1B4332]">Manage users</Link>}
         <button type="button" onClick={handleSignOut} disabled={busy} className="rounded-full border border-[#D1D5DB] px-5 py-2.5 text-sm font-semibold text-[#374151] hover:bg-[#F9FAFB] disabled:opacity-60">{busy ? "Signing out…" : "Sign out"}</button>
       </div>
       {error && <p role="alert" className="mt-4 text-sm text-red-700">{error}</p>}

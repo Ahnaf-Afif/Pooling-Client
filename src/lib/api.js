@@ -58,12 +58,48 @@ export const reportPoll = (id, report) =>
 export const getAuthConfiguration = () => request("/auth-config");
 export const getReports = (status = "pending") =>
   request(`/moderation/reports?status=${encodeURIComponent(status)}`);
-export const updateReport = (id, status) =>
+export const updateReport = (id, status, note = "") =>
   request(`/moderation/reports/${encodeURIComponent(id)}`, {
     method: "PATCH",
-    body: JSON.stringify({ status }),
+    body: JSON.stringify({ status, note }),
   });
-export const removeReportedPoll = (id) =>
-  request(`/moderation/reports/${encodeURIComponent(id)}/remove-poll`, { method: "POST" });
-export const suspendReportedOwner = (id) =>
-  request(`/moderation/reports/${encodeURIComponent(id)}/suspend-owner`, { method: "POST" });
+export const addReportNote = (id, note) =>
+  request(`/moderation/reports/${encodeURIComponent(id)}/notes`, {
+    method: "POST",
+    body: JSON.stringify({ note }),
+  });
+export const editReportedPoll = (id, poll) =>
+  request(`/moderation/reports/${encodeURIComponent(id)}/poll`, {
+    method: "PATCH",
+    body: JSON.stringify(poll),
+  });
+export const removeReportedPoll = (id, note = "") =>
+  request(`/moderation/reports/${encodeURIComponent(id)}/remove-poll`, {
+    method: "POST",
+    body: JSON.stringify({ note }),
+  });
+export const suspendReportedOwner = (id, note = "") =>
+  request(`/moderation/reports/${encodeURIComponent(id)}/suspend-owner`, {
+    method: "POST",
+    body: JSON.stringify({ note }),
+  });
+export const getUsers = ({ page = 1, query = "", field = "name" } = {}) => {
+  const params = new URLSearchParams({ page: String(page), field });
+  if (query) params.set("q", query);
+  return request(`/moderation/users?${params}`);
+};
+export const updateUserRole = (id, role) =>
+  request(`/moderation/users/${encodeURIComponent(id)}/role`, {
+    method: "PATCH",
+    body: JSON.stringify({ role }),
+  });
+export const suspendUser = (id, note) =>
+  request(`/moderation/users/${encodeURIComponent(id)}/suspend`, {
+    method: "POST",
+    body: JSON.stringify({ note }),
+  });
+export const reactivateUser = (id, note = "") =>
+  request(`/moderation/users/${encodeURIComponent(id)}/reactivate`, {
+    method: "POST",
+    body: JSON.stringify({ note }),
+  });

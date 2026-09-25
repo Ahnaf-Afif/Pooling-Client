@@ -105,6 +105,10 @@ export default function Navbar() {
             {(role === "admin" || role === "moderator") && (
               <Link href="/moderation" className={`hover:text-[#0F0F0F] transition-colors ${pathname === "/moderation" ? "text-[#0F0F0F]" : ""}`}>Moderation</Link>
             )}
+
+            {role === "admin" && (
+              <Link href="/admin/users" className={`hover:text-[#0F0F0F] transition-colors ${pathname === "/admin/users" ? "text-[#0F0F0F]" : ""}`}>Users</Link>
+            )}
           </nav>
 
           <div className="hidden md:block">
@@ -202,6 +206,8 @@ export default function Navbar() {
               </Link>
 
               {(role === "admin" || role === "moderator") && <Link href="/moderation" onClick={() => setIsMenuOpen(false)} className="py-3 hover:text-[#0F0F0F]">Moderation</Link>}
+
+              {role === "admin" && <Link href="/admin/users" onClick={() => setIsMenuOpen(false)} className="py-3 hover:text-[#0F0F0F]">Manage users</Link>}
 
               {session?.user ? (
                 <>
