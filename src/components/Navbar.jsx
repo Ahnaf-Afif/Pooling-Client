@@ -6,12 +6,40 @@ import { useState } from "react";
 
 import { signOut, useSession } from "@/lib/auth-client";
 
+function getFirstName(user) {
+  const name = user?.name?.trim();
+  return name ? name.split(/\s+/)[0] : "Account";
+}
+
+function getGooglePhoto(user) {
+  if (!user?.image) return "";
+  try {
+    const url = new URL(user.image);
+    const isGoogleImage = url.hostname === "googleusercontent.com" || url.hostname.endsWith(".googleusercontent.com");
+    return url.protocol === "https:" && isGoogleImage ? url.href : "";
+  } catch {
+    return "";
+  }
+}
+
+function ProfilePhoto({ src }) {
+  const [failedSrc, setFailedSrc] = useState("");
+  if (!src || failedSrc === src) return null;
+  return (
+    // The browser loads this directly from Google; the app never stores or proxies the image file.
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={src} alt="" width="28" height="28" referrerPolicy="no-referrer" onError={() => setFailedSrc(src)} className="h-7 w-7 shrink-0 rounded-full object-cover" />
+  );
+}
+
 export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const { data: session, isPending } = useSession();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const role = session?.user?.role;
+  const firstName = getFirstName(session?.user);
+  const profilePhoto = getGooglePhoto(session?.user);
 
   async function handleSignOut() {
     await signOut();
@@ -81,7 +109,10 @@ export default function Navbar() {
 
           <div className="hidden md:block">
             {isPending ? <span className="block h-9 w-24 animate-pulse rounded-full bg-[#F3F4F6]" /> : session?.user ? (
-              <Link href="/account" className="block max-w-40 truncate rounded-full border border-[#BFD5C9] bg-[#F7FBF9] px-4 py-2 text-sm font-semibold text-[#1B4332] hover:bg-[#F0F7F4]">{session.user.name || "Account"}</Link>
+              <Link href="/account" className={`inline-flex max-w-40 items-center gap-2 rounded-full border border-[#BFD5C9] bg-[#F7FBF9] py-1.5 pr-4 text-sm font-semibold text-[#1B4332] hover:bg-[#F0F7F4] ${profilePhoto ? "pl-1.5" : "pl-4"}`}>
+                <ProfilePhoto src={profilePhoto} />
+                <span className="truncate">{firstName}</span>
+              </Link>
             ) : (
               <Link href={`/sign-in?returnTo=${encodeURIComponent(pathname)}`} className="rounded-full bg-[#1B4332] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#15362A]">Sign in</Link>
             )}
@@ -174,7 +205,10 @@ export default function Navbar() {
 
               {session?.user ? (
                 <>
-                  <Link href="/account" onClick={() => setIsMenuOpen(false)} className="mt-2 border-t border-[#E5E7EB] py-3 font-semibold text-[#1B4332]">Account · {session.user.name || session.user.email}</Link>
+                  <Link href="/account" onClick={() => setIsMenuOpen(false)} className="mt-2 flex items-center gap-2 border-t border-[#E5E7EB] py-3 font-semibold text-[#1B4332]">
+                    <ProfilePhoto src={profilePhoto} />
+                    <span>{firstName}</span>
+                  </Link>
                   <button type="button" onClick={handleSignOut} className="py-3 text-left hover:text-[#0F0F0F]">Sign out</button>
                 </>
               ) : !isPending && <Link href={`/sign-in?returnTo=${encodeURIComponent(pathname)}`} onClick={() => setIsMenuOpen(false)} className="mt-2 border-t border-[#E5E7EB] py-3 font-semibold text-[#1B4332]">Sign in</Link>}
