@@ -58,6 +58,13 @@ export const reportPoll = (id, report) =>
 export const getAuthConfiguration = () => request("/auth-config");
 export const getReports = (status = "pending") =>
   request(`/moderation/reports?status=${encodeURIComponent(status)}`);
+export const getModeratedPoll = (id) =>
+  request(`/moderation/polls/${encodeURIComponent(id)}`);
+export const editModeratedPoll = (id, poll) =>
+  request(`/moderation/polls/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    body: JSON.stringify(poll),
+  });
 export const updateReport = (id, status, note = "") =>
   request(`/moderation/reports/${encodeURIComponent(id)}`, {
     method: "PATCH",

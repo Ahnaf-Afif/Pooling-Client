@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import AuthRequired from "@/components/AuthRequired";
@@ -29,7 +30,7 @@ const actionLabels = {
   owner_suspended: "Suspended the poll owner",
 };
 
-function PollEditor({ draft, setDraft, votes, busy, onCancel, onSave }) {
+export function PollEditor({ draft, setDraft, votes, busy, onCancel, onSave }) {
   const canChangeOptionCount = votes === 0;
   const updateOption = (index, value) => {
     setDraft((current) => ({
@@ -69,13 +70,14 @@ function PollEditor({ draft, setDraft, votes, busy, onCancel, onSave }) {
       </div>
       <div className="flex flex-wrap gap-2">
         <button type="submit" disabled={busy} className="rounded-full bg-[#1B4332] px-4 py-2 text-xs font-semibold text-white disabled:opacity-50">{busy ? "Saving…" : "Save edit & resolve"}</button>
-        <button type="button" onClick={onCancel} disabled={busy} className="rounded-full border border-[#D1D5DB] px-4 py-2 text-xs font-semibold text-[#374151] disabled:opacity-50">Cancel</button>
+        {onCancel && <button type="button" onClick={onCancel} disabled={busy} className="rounded-full border border-[#D1D5DB] px-4 py-2 text-xs font-semibold text-[#374151] disabled:opacity-50">Cancel</button>}
       </div>
     </form>
   );
 }
 
 function ModerationQueue() {
+  const router = useRouter();
   const [activeStatus, setActiveStatus] = useState("pending");
   const [reports, setReports] = useState([]);
   const [role, setRole] = useState("");
@@ -84,6 +86,7 @@ function ModerationQueue() {
   const [error, setError] = useState("");
   const [notes, setNotes] = useState({});
   const [editing, setEditing] = useState(null);
+  const [pollLookup, setPollLookup] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
@@ -153,6 +156,23 @@ function ModerationQueue() {
     }
   }
 
+  function openPollEditor(event) {
+    event.preventDefault();
+    let slug = pollLookup.trim();
+    try {
+      const url = new URL(slug);
+      const match = url.pathname.match(/^\/poll\/([^/]+)/);
+      slug = match ? decodeURIComponent(match[1]) : "";
+    } catch {
+      slug = slug.replace(/^\/?poll\//, "").split(/[/?#]/)[0];
+    }
+    if (!/^[a-z0-9-]{1,80}$/.test(slug)) {
+      setError("Paste a valid poll link or poll slug.");
+      return;
+    }
+    router.push(`/moderation/polls/${encodeURIComponent(slug)}`);
+  }
+
   if (status === "forbidden") {
     return <main className="mx-auto min-h-[65vh] max-w-2xl px-6 py-20"><StatusPanel title="Moderator access required" message="This area is restricted to moderators and administrators." action={<Link href="/" className="text-sm font-semibold text-[#1B4332]">← Return home</Link>} /></main>;
   }
@@ -174,6 +194,12 @@ function ModerationQueue() {
       <div className="mt-7 flex flex-wrap gap-2">
         {STATUSES.map((item) => <button key={item} type="button" onClick={() => { setStatus("loading"); setError(""); setEditing(null); setActiveStatus(item); }} className={`rounded-full border px-4 py-2 text-sm font-semibold capitalize ${activeStatus === item ? "border-[#1B4332] bg-[#1B4332] text-white" : "border-[#E5E7EB] text-[#6B7280]"}`}>{item}</button>)}
       </div>
+
+      <form onSubmit={openPollEditor} className="mt-6 flex flex-col gap-2 rounded-2xl bg-[#F9FAFB] p-4 sm:flex-row sm:items-center">
+        <label htmlFor="poll-lookup" className="shrink-0 text-sm font-semibold text-[#374151]">Edit any poll</label>
+        <input id="poll-lookup" value={pollLookup} onChange={(event) => setPollLookup(event.target.value)} placeholder="Paste a poll link or slug" className="min-w-0 flex-1 rounded-xl border border-[#D1D5DB] bg-white px-4 py-2.5 text-sm" />
+        <button type="submit" className="rounded-xl border border-[#1B4332] px-4 py-2.5 text-sm font-semibold text-[#1B4332]">Open editor</button>
+      </form>
 
       {error && status !== "forbidden" && <p role="alert" className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
       <section className="mt-8 space-y-4" aria-label={`${activeStatus} reports`}>
