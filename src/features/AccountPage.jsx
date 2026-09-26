@@ -6,12 +6,14 @@ import { useState } from "react";
 
 import AuthRequired from "@/components/AuthRequired";
 import { signOut, useSession } from "@/lib/auth-client";
+import { deleteAccount, exportAccount } from "@/lib/api";
 
 function AccountDetails() {
   const router = useRouter();
   const { data: session } = useSession();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
   const user = session.user;
   const role = user.role || "user";
 
@@ -26,6 +28,41 @@ function AccountDetails() {
     }
     router.push("/");
     router.refresh();
+  }
+
+  async function handleExport() {
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const data = await exportAccount();
+      const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "what-do-you-think-account-export.json";
+      link.click();
+      URL.revokeObjectURL(url);
+      setMessage("Your account export has been downloaded.");
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (window.prompt("This permanently removes your account. Type DELETE to confirm.") !== "DELETE") return;
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      await deleteAccount();
+      router.push("/");
+      router.refresh();
+    } catch (requestError) {
+      setError(requestError.message);
+      setBusy(false);
+    }
   }
 
   return (
@@ -48,6 +85,12 @@ function AccountDetails() {
         {role === "admin" && <Link href="/admin/users" className="rounded-full border border-[#1B4332] px-5 py-2.5 text-sm font-semibold text-[#1B4332]">Manage users</Link>}
         <button type="button" onClick={handleSignOut} disabled={busy} className="rounded-full border border-[#D1D5DB] px-5 py-2.5 text-sm font-semibold text-[#374151] hover:bg-[#F9FAFB] disabled:opacity-60">{busy ? "Signing out…" : "Sign out"}</button>
       </div>
+      <section className="mt-8 border-t border-[#E5E7EB] pt-7">
+        <h2 className="font-display text-xl font-semibold">Your data</h2>
+        <p className="mt-2 text-sm leading-6 text-[#6B7280]">Download a copy of your account, polls, votes, and reports, or permanently remove your account. Polls are archived and vote receipts are anonymized to preserve aggregate integrity.</p>
+        <div className="mt-4 flex flex-wrap gap-3"><button type="button" onClick={handleExport} disabled={busy} className="rounded-full border border-[#1B4332] px-5 py-2.5 text-sm font-semibold text-[#1B4332] disabled:opacity-50">Download my data</button><button type="button" onClick={handleDelete} disabled={busy} className="rounded-full border border-red-300 px-5 py-2.5 text-sm font-semibold text-red-700 disabled:opacity-50">Delete account</button></div>
+      </section>
+      {message && <p role="status" className="mt-4 text-sm text-[#1B4332]">{message}</p>}
       {error && <p role="alert" className="mt-4 text-sm text-red-700">{error}</p>}
     </main>
   );

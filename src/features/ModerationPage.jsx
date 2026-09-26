@@ -88,14 +88,17 @@ function ModerationQueue() {
   const [editing, setEditing] = useState(null);
   const [pollLookup, setPollLookup] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
+  const [page, setPage] = useState(1);
+  const [pages, setPages] = useState(1);
 
   useEffect(() => {
     let active = true;
-    getReports(activeStatus)
+    getReports(activeStatus, page)
       .then((data) => {
         if (!active) return;
         setReports(data.reports);
         setRole(data.role);
+        setPages(data.pages || 1);
         setStatus("ready");
       })
       .catch((requestError) => {
@@ -104,11 +107,12 @@ function ModerationQueue() {
         setStatus(requestError.status === 403 ? "forbidden" : "error");
       });
     return () => { active = false; };
-  }, [activeStatus, reloadKey]);
+  }, [activeStatus, page, reloadKey]);
 
   function reload() {
     setEditing(null);
     setStatus("loading");
+    setPage(1);
     setReloadKey((value) => value + 1);
   }
 
@@ -192,7 +196,7 @@ function ModerationQueue() {
       </div>
 
       <div className="mt-7 flex flex-wrap gap-2">
-        {STATUSES.map((item) => <button key={item} type="button" onClick={() => { setStatus("loading"); setError(""); setEditing(null); setActiveStatus(item); }} className={`rounded-full border px-4 py-2 text-sm font-semibold capitalize ${activeStatus === item ? "border-[#1B4332] bg-[#1B4332] text-white" : "border-[#E5E7EB] text-[#6B7280]"}`}>{item}</button>)}
+        {STATUSES.map((item) => <button key={item} type="button" onClick={() => { setStatus("loading"); setError(""); setEditing(null); setPage(1); setActiveStatus(item); }} className={`rounded-full border px-4 py-2 text-sm font-semibold capitalize ${activeStatus === item ? "border-[#1B4332] bg-[#1B4332] text-white" : "border-[#E5E7EB] text-[#6B7280]"}`}>{item}</button>)}
       </div>
 
       <form onSubmit={openPollEditor} className="mt-6 flex flex-col gap-2 rounded-2xl bg-[#F9FAFB] p-4 sm:flex-row sm:items-center">
@@ -226,7 +230,7 @@ function ModerationQueue() {
                 <details className="mt-5 rounded-xl bg-[#F9FAFB] px-4 py-3">
                   <summary className="cursor-pointer text-xs font-semibold text-[#374151]">Action history ({report.history.length})</summary>
                   <ol className="mt-3 space-y-3 border-l border-[#D1D5DB] pl-4">
-                    {report.history.map((entry) => <li key={entry.id} className="text-xs leading-5 text-[#6B7280]"><span className="font-semibold text-[#374151]">{entry.actorName}</span> · {actionLabels[entry.action] || entry.action.replaceAll("_", " ")}<br /><time>{dateFormatter.format(new Date(entry.createdAt))}</time>{entry.changedFields.length > 0 && ` · Changed ${entry.changedFields.join(", ")}`}{entry.note && <p className="mt-1 text-[#4B5563]">“{entry.note}”</p>}</li>)}
+                    {report.history.map((entry) => <li key={entry.id} className="text-xs leading-5 text-[#6B7280]"><span className="font-semibold text-[#374151]">{entry.actorName}</span> · {actionLabels[entry.action] || entry.action.replaceAll("_", " ")}<br /><time>{dateFormatter.format(new Date(entry.createdAt))}</time>{entry.changedFields.length > 0 && ` · Changed ${entry.changedFields.join(", ")}`}{entry.note && <p className="mt-1 text-[#4B5563]">“{entry.note}”</p>}{entry.before && entry.after && <details className="mt-2 rounded-lg border border-[#E5E7EB] bg-white p-2"><summary className="cursor-pointer font-semibold text-[#374151]">View recorded change</summary><div className="mt-2 grid gap-2 text-[11px] sm:grid-cols-2"><div><p className="font-semibold text-[#6B7280]">Before</p><pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap rounded bg-[#F9FAFB] p-2">{JSON.stringify(entry.before, null, 2)}</pre></div><div><p className="font-semibold text-[#6B7280]">After</p><pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap rounded bg-[#F9FAFB] p-2">{JSON.stringify(entry.after, null, 2)}</pre></div></div></details>}</li>)}
                   </ol>
                 </details>
               )}
@@ -250,6 +254,7 @@ function ModerationQueue() {
           );
         })}
       </section>
+      {status === "ready" && pages > 1 && <nav aria-label="Moderation pages" className="mt-8 flex items-center justify-center gap-3"><button type="button" disabled={page === 1} onClick={() => { setStatus("loading"); setPage((value) => value - 1); }} className="rounded-full border border-[#D1D5DB] px-4 py-2 text-xs font-semibold text-[#374151] disabled:opacity-40">Previous</button><span className="text-xs text-[#6B7280]">Page {page} of {pages}</span><button type="button" disabled={page === pages} onClick={() => { setStatus("loading"); setPage((value) => value + 1); }} className="rounded-full border border-[#D1D5DB] px-4 py-2 text-xs font-semibold text-[#374151] disabled:opacity-40">Next</button></nav>}
     </main>
   );
 }

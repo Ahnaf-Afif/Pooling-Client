@@ -33,7 +33,8 @@ export const getPolls = ({ category = "All", trending = false, page = 1, limit =
   return request(`/polls?${params}`);
 };
 export const getPoll = (id) => request(`/polls/${encodeURIComponent(id)}`);
-export const getMyPolls = () => request("/polls/mine");
+export const getMyPolls = ({ page = 1, limit = 24 } = {}) =>
+  request(`/polls/mine?page=${page}&limit=${limit}`);
 export const getOwnedPoll = (id) => request(`/polls/mine/${encodeURIComponent(id)}`);
 export const createPoll = (poll) =>
   request("/polls", { method: "POST", body: JSON.stringify(poll) });
@@ -56,8 +57,11 @@ export const reportPoll = (id, report) =>
     body: JSON.stringify(report),
   });
 export const getAuthConfiguration = () => request("/auth-config");
-export const getReports = (status = "pending") =>
-  request(`/moderation/reports?status=${encodeURIComponent(status)}`);
+export const exportAccount = () => request("/account/export");
+export const deleteAccount = () =>
+  request("/account/delete", { method: "POST", body: JSON.stringify({ confirmation: "DELETE" }) });
+export const getReports = (status = "pending", page = 1) =>
+  request(`/moderation/reports?status=${encodeURIComponent(status)}&page=${page}`);
 export const getModeratedPoll = (id) =>
   request(`/moderation/polls/${encodeURIComponent(id)}`);
 export const editModeratedPoll = (id, poll) =>

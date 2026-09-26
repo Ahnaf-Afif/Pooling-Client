@@ -36,6 +36,7 @@ function Results() {
       <div className="mt-8"><CategoryBadge category={poll.category} /></div>
       <h1 className="font-display mt-4 text-3xl font-semibold leading-tight md:text-4xl">{poll.question}</h1>
       <p className="mt-3 text-sm text-[#9CA3AF]">{poll.totalVotes.toLocaleString("en-BD")} total votes · Live results</p>
+      {poll.moderatedAt && <p className="mt-4 rounded-xl border border-[#E8D7A5] bg-[#FFF9E8] px-4 py-3 text-sm text-[#725B12]">This poll was edited by the moderation team to keep it within community guidelines.</p>}
 
       {winner && (
         <section className="mt-9 rounded-2xl border border-[#A7C4B5] bg-[#F0F7F4] p-5">

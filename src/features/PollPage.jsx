@@ -59,6 +59,7 @@ export default function PollPage() {
       <div className="mt-8"><CategoryBadge category={poll.category} /></div>
       <h1 className="font-display mt-4 text-3xl font-semibold leading-tight md:text-4xl">{poll.question}</h1>
       <p className="mt-3 text-sm text-[#9CA3AF]">{poll.totalVotes.toLocaleString("en-BD")} votes · Created {dateFormatter.format(new Date(poll.createdAt))}</p>
+      {poll.moderatedAt && <p className="mt-4 rounded-xl border border-[#E8D7A5] bg-[#FFF9E8] px-4 py-3 text-sm text-[#725B12]">This poll was edited by the moderation team to keep it within community guidelines.</p>}
 
       {previousVote ? (
         <div className="mt-10 rounded-2xl border border-[#A7C4B5] bg-[#F0F7F4] p-6 text-center">
@@ -84,7 +85,7 @@ export default function PollPage() {
         {alreadyVoted && <Link href={`/poll/${id}/results`} className="mt-4 block text-center text-sm font-semibold text-[#1B4332] hover:underline">View results →</Link>}
         <button type="submit" disabled={!selected || status === "submitting"} className="mt-7 w-full rounded-xl bg-[#1B4332] py-4 font-semibold text-white hover:bg-[#15362A] disabled:cursor-not-allowed disabled:bg-[#E5E7EB] disabled:text-[#9CA3AF]">{status === "submitting" ? "Submitting…" : "Submit Vote"}</button>
       </form>}
-      {!previousVote && (!poll.status || poll.status === "active") && <p className="mt-4 text-center text-xs text-[#9CA3AF]">Results are revealed after you vote.</p>}
+      {!previousVote && (!poll.status || poll.status === "active") && <p className="mt-4 text-center text-xs text-[#9CA3AF]">Vote once to record your response; live aggregate results are public.</p>}
       <div className="mt-8 border-t border-[#E5E7EB] pt-5 text-center"><ReportButton pollId={poll.id} /></div>
     </main>
   );
