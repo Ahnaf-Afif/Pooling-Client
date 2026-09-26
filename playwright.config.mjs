@@ -11,7 +11,8 @@ export default defineConfig({
     launchOptions: process.env.PLAYWRIGHT_CHROMIUM_PATH ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_PATH } : {},
   },
   webServer: {
-    command: "npm run start -- --port 3100 --hostname 127.0.0.1",
+    command: "npm run start:standalone",
+    env: { PORT: "3100", HOSTNAME: "127.0.0.1" },
     url: "http://127.0.0.1:3100/sign-in",
     reuseExistingServer: false,
     timeout: 60_000,

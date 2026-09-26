@@ -29,15 +29,19 @@ async function request(path, options) {
   return data;
 }
 
-export const getPolls = ({ category = "All", trending = false, page = 1, limit = 12 } = {}) => {
-  const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+export const getPolls = ({ category = "All", trending = false, cursor, limit = 12 } = {}) => {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (cursor) params.set("cursor", cursor);
   if (category !== "All") params.set("category", category);
   if (trending) params.set("trending", "true");
   return request(`/polls?${params}`);
 };
 export const getPoll = (id, options) => request(`/polls/${encodeURIComponent(id)}`, options);
-export const getMyPolls = ({ page = 1, limit = 24 } = {}) =>
-  request(`/polls/mine?page=${page}&limit=${limit}`);
+export const getMyPolls = ({ cursor, limit = 24 } = {}) => {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (cursor) params.set("cursor", cursor);
+  return request(`/polls/mine?${params}`);
+};
 export const getOwnedPoll = (id) => request(`/polls/mine/${encodeURIComponent(id)}`);
 export const createPoll = (poll) =>
   request("/polls", { method: "POST", body: JSON.stringify(poll) });

@@ -5,8 +5,11 @@ export default async function sitemap() {
   const urls = [{ url: siteUrl, lastModified: new Date() }];
 
   try {
+    let cursor;
     for (let page = 1; page <= 100; page += 1) {
-      const response = await fetch(`${apiUrl}/polls?page=${page}&limit=100`, {
+      const params = new URLSearchParams({ limit: "100", stats: "false" });
+      if (cursor) params.set("cursor", cursor);
+      const response = await fetch(`${apiUrl}/polls?${params}`, {
         next: { revalidate: 3600 },
         signal: AbortSignal.timeout(10_000),
       });
@@ -18,7 +21,8 @@ export default async function sitemap() {
           lastModified: poll.updatedAt || poll.createdAt || new Date(),
         });
       }
-      if (!data.hasMore) break;
+      cursor = data.nextCursor;
+      if (!cursor) break;
     }
   } catch {
     // Keep the homepage in the sitemap if the API is temporarily unavailable during a build.

@@ -12,6 +12,24 @@ npm run dev
 
 Open `http://localhost:3000`. Browser API calls use `/api` and Next.js proxies them to the Express server at `API_PROXY_TARGET`, keeping Better Auth cookies first-party.
 
+Use Node 22. To check a self-hosted production bundle:
+
+```bash
+npm run build
+PORT=3000 HOSTNAME=127.0.0.1 npm run start:standalone
+```
+
+The standalone launcher copies the build's static/public assets into its output
+directory before starting Next's generated server. `npm run test:e2e` uses this
+same launcher on port 3100; install Playwright Chromium first. Browser tests use
+intercepted local fixtures, not production data. Backend auth and transactions
+are separately tested against a temporary replica set.
+
+Public and My Polls lists require the matching cursor-enabled API release.
+Load-more follows `nextCursor`; changing category starts a new list. Missing or
+stale statistics are labeled explicitly instead of showing invented zero counts.
+Do not promote this frontend against the old numbered-page API.
+
 ## Vercel production
 
 This repository's `.env.production` contains only public values:

@@ -10,7 +10,6 @@ import { getMyPolls, getPolls } from "@/lib/api";
 import { useSession } from "@/lib/auth-client";
 
 const CATEGORIES = ["All", "Tech", "Education", "Food", "Career", "Lifestyle", "Social"];
-const EMPTY_STATS = { totalVotes: 0, activePolls: 0, categories: 0, trending: 0 };
 const STEPS = [
   ["01", "Create a Poll", "Ask a clear question, add your choices, and publish it in seconds."],
   ["02", "Share It", "Send the poll link to friends and communities wherever they already gather."],
@@ -21,10 +20,10 @@ export default function HomePage({ showTrending = false, initialCategory, initia
   const validCategory = CATEGORIES.includes(initialCategory) ? initialCategory : "All";
   const [activeCategory, setActiveCategory] = useState(validCategory);
   const [polls, setPolls] = useState(initialData?.polls || []);
-  const [stats, setStats] = useState(initialData?.stats || EMPTY_STATS);
+  const [stats, setStats] = useState(initialData?.stats || null);
   const [status, setStatus] = useState(initialData ? "ready" : "loading");
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(initialData?.hasMore || false);
+  const [cursor, setCursor] = useState(initialData?.nextCursor || null);
+  const hasMore = Boolean(cursor);
   const [loadingMore, setLoadingMore] = useState(false);
   const [loadMoreError, setLoadMoreError] = useState("");
   const [retryKey, setRetryKey] = useState(0);
@@ -56,9 +55,8 @@ export default function HomePage({ showTrending = false, initialCategory, initia
       .then((data) => {
         if (!active) return;
         setPolls(data.polls);
-        setStats(data.stats);
-        setHasMore(data.hasMore);
-        setPage(1);
+        setStats(data.stats || null);
+        setCursor(data.nextCursor);
         setStatus("ready");
       })
       .catch(() => { if (active) setStatus("error"); });
@@ -70,7 +68,7 @@ export default function HomePage({ showTrending = false, initialCategory, initia
     requestVersion.current += 1;
     setActiveCategory(category);
     setPolls([]);
-    setHasMore(false);
+    setCursor(null);
     setLoadingMore(false);
     setStatus("loading");
     setLoadMoreError("");
@@ -89,13 +87,10 @@ export default function HomePage({ showTrending = false, initialCategory, initia
     setLoadingMore(true);
     setLoadMoreError("");
     try {
-      const nextPage = page + 1;
-      const data = await getPolls({ category: activeCategory, trending: showTrending, page: nextPage });
+      const data = await getPolls({ category: activeCategory, trending: showTrending, cursor });
       if (version !== requestVersion.current) return;
-      setPolls((current) => [...current, ...data.polls]);
-      setPage(nextPage);
-      setHasMore(data.hasMore);
-      setStats(data.stats);
+      setPolls((current) => [...new Map([...current, ...data.polls].map((poll) => [poll.id, poll])).values()]);
+      setCursor(data.nextCursor);
     } catch {
       if (version === requestVersion.current) setLoadMoreError("Could not load more polls. Please try again.");
     } finally {
@@ -169,14 +164,15 @@ export default function HomePage({ showTrending = false, initialCategory, initia
       <section aria-label="Platform statistics" className="border-b border-[#DDE8E2] bg-[#F0F7F4]">
         <div className="mx-auto grid max-w-6xl grid-cols-2 gap-6 px-6 py-6 md:grid-cols-4">
           {[
-            ["Total Votes", stats.totalVotes],
-            ["Active Polls", stats.activePolls],
-            ["Categories", stats.categories],
-            ["Trending", stats.trending],
+            ["Total Votes", stats?.totalVotes],
+            ["Active Polls", stats?.activePolls],
+            ["Categories", stats?.categories],
+            ["Trending", stats?.trending],
           ].map(([label, value]) => (
-            <div key={label}><strong className="font-display text-2xl text-[#1B4332]">{value.toLocaleString("en-BD")}</strong><p className="text-xs text-[#6B7280]">{label}</p></div>
+            <div key={label}><strong className="font-display text-2xl text-[#1B4332]">{value?.toLocaleString("en-BD") ?? "—"}</strong><p className="text-xs text-[#6B7280]">{label}</p></div>
           ))}
         </div>
+        <p className="mx-auto max-w-6xl px-6 pb-4 text-xs text-[#6B7280]">{!stats ? "Statistics are temporarily unavailable." : stats.stale ? "Showing the last available statistics; updates are delayed." : "Statistics refresh about once a minute."}</p>
       </section>
 
       <section id="polls" className="mx-auto max-w-6xl scroll-mt-20 px-6 py-16">

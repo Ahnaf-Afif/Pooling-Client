@@ -3,7 +3,7 @@ import HomePage from "@/features/HomePage";
 const API_URL = (process.env.API_INTERNAL_URL || "http://localhost:5000/api").replace(/\/$/, "");
 
 async function loadInitialPolls(category, trending) {
-  const query = new URLSearchParams({ page: "1", limit: "12" });
+  const query = new URLSearchParams({ limit: "12" });
   if (category !== "All") query.set("category", category);
   if (trending) query.set("trending", "true");
 
