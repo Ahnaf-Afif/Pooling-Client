@@ -90,7 +90,7 @@ function AccountDetails() {
       <AccountSecurity />
       <section className="mt-8 border-t border-[#E5E7EB] pt-7">
         <h2 className="font-display text-xl font-semibold">Your data</h2>
-        <p className="mt-2 text-sm leading-6 text-[#6B7280]">Download a copy of your account, polls, votes, and reports, or permanently remove your account. Polls are archived and vote receipts are anonymized to preserve aggregate integrity.</p>
+        <p className="mt-2 text-sm leading-6 text-[#6B7280]">Download a copy of your account, polls, votes, and reports, or permanently remove your account. Both actions require recent verification: use your authenticator above, or sign out and sign in again if you have not enabled one. Polls are archived and vote receipts are anonymized to preserve aggregate integrity.</p>
         <div className="mt-4 flex flex-wrap gap-3"><button type="button" onClick={handleExport} disabled={busy} className="rounded-full border border-[#1B4332] px-5 py-2.5 text-sm font-semibold text-[#1B4332] disabled:opacity-50">Download my data</button><button type="button" onClick={handleDelete} disabled={busy} className="rounded-full border border-red-300 px-5 py-2.5 text-sm font-semibold text-red-700 disabled:opacity-50">Delete account</button></div>
       </section>
       {message && <p role="status" className="mt-4 text-sm text-[#1B4332]">{message}</p>}

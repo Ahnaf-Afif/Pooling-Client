@@ -8,9 +8,16 @@ import { signIn, useSession } from "@/lib/auth-client";
 import { getAuthConfiguration } from "@/lib/api";
 
 function safeReturnTo(value) {
-  return value?.startsWith("/") && !value.startsWith("//") && !value.startsWith("/sign-in")
-    ? value
-    : "/my-polls";
+  const fallback = "/my-polls";
+  if (typeof value !== "string" || value.length > 2048 || !value.startsWith("/") ||
+      value.includes("\\") || [...value].some((char) => char.charCodeAt(0) <= 32 || char.charCodeAt(0) === 127)) return fallback;
+  try {
+    const url = new URL(value, "https://return-path.invalid");
+    // Normalize dot segments before checking. Returning a pathname beginning
+    // with // would turn a same-origin URL into a protocol-relative redirect.
+    if (url.origin !== "https://return-path.invalid" || url.pathname.startsWith("//") || url.pathname.startsWith("/sign-in")) return fallback;
+    return `${url.pathname}${url.search}${url.hash}`;
+  } catch { return fallback; }
 }
 
 function SignInForm() {

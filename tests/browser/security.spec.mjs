@@ -71,3 +71,13 @@ test("signed-out visitors see sign-in instead of account or moderation data", as
   await expect(page.getByRole("heading", { name: "Sign in required" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Delete account" })).toHaveCount(0);
 });
+
+test("signed-in return links reject external and normalized protocol-relative destinations", async ({ page }) => {
+  await mockAccount(page, { staff: false });
+  for (const returnTo of ["https://example.test", "//example.test", "/\\example.test", "/.//example.test", "/account/..//example.test", "/\t/example.test", "/sign-in"]) {
+    await page.goto(`/sign-in?returnTo=${encodeURIComponent(returnTo)}`);
+    await expect(page.getByRole("link", { name: "Continue", exact: true })).toHaveAttribute("href", "/my-polls");
+  }
+  await page.goto(`/sign-in?returnTo=${encodeURIComponent("/account?tab=data#security")}`);
+  await expect(page.getByRole("link", { name: "Continue", exact: true })).toHaveAttribute("href", "/account?tab=data#security");
+});
