@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import AuthRequired from "@/components/AuthRequired";
+import AccountSecurity from "@/components/AccountSecurity";
 import { signOut, useSession } from "@/lib/auth-client";
 import { deleteAccount, exportAccount } from "@/lib/api";
 
@@ -57,6 +58,7 @@ function AccountDetails() {
     setMessage("");
     try {
       await deleteAccount();
+      await signOut();
       router.push("/");
       router.refresh();
     } catch (requestError) {
@@ -85,6 +87,7 @@ function AccountDetails() {
         {role === "admin" && <Link href="/admin/users" className="rounded-full border border-[#1B4332] px-5 py-2.5 text-sm font-semibold text-[#1B4332]">Manage users</Link>}
         <button type="button" onClick={handleSignOut} disabled={busy} className="rounded-full border border-[#D1D5DB] px-5 py-2.5 text-sm font-semibold text-[#374151] hover:bg-[#F9FAFB] disabled:opacity-60">{busy ? "Signing out…" : "Sign out"}</button>
       </div>
+      <AccountSecurity />
       <section className="mt-8 border-t border-[#E5E7EB] pt-7">
         <h2 className="font-display text-xl font-semibold">Your data</h2>
         <p className="mt-2 text-sm leading-6 text-[#6B7280]">Download a copy of your account, polls, votes, and reports, or permanently remove your account. Polls are archived and vote receipts are anonymized to preserve aggregate integrity.</p>

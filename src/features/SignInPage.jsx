@@ -17,6 +17,8 @@ function SignInForm() {
   const searchParams = useSearchParams();
   const { data: session, isPending } = useSession();
   const [configuration, setConfiguration] = useState(null);
+  const [configurationError, setConfigurationError] = useState("");
+  const [retryKey, setRetryKey] = useState(0);
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState("");
   const [message, setMessage] = useState("");
@@ -24,21 +26,26 @@ function SignInForm() {
   const returnTo = safeReturnTo(searchParams.get("returnTo"));
 
   useEffect(() => {
+    let active = true;
     getAuthConfiguration()
-      .then(setConfiguration)
-      .catch(() => setError("Authentication is temporarily unavailable."));
-  }, []);
+      .then((data) => { if (active) setConfiguration(data); })
+      .catch(() => { if (active) setConfigurationError("Authentication is temporarily unavailable. Please try again."); });
+    return () => { active = false; };
+  }, [retryKey]);
 
   async function continueWithGoogle() {
     setBusy("google");
     setError("");
-    const result = await signIn.social({
-      provider: "google",
-      callbackURL: returnTo,
-      errorCallbackURL: `/sign-in?returnTo=${encodeURIComponent(returnTo)}&error=oauth`,
-    });
-    if (result?.error) {
-      setError(result.error.message || "Google sign-in could not be started.");
+    try {
+      const result = await signIn.social({
+        provider: "google",
+        callbackURL: returnTo,
+        errorCallbackURL: `/sign-in?returnTo=${encodeURIComponent(returnTo)}&error=oauth`,
+      });
+      if (result?.error) setError(result.error.message || "Google sign-in could not be started.");
+    } catch {
+      setError("Google sign-in could not be started. Please try again.");
+    } finally {
       setBusy("");
     }
   }
@@ -48,19 +55,32 @@ function SignInForm() {
     setBusy("email");
     setError("");
     setMessage("");
-    const result = await signIn.magicLink({
-      email: email.trim(),
-      name: email.trim().split("@")[0],
-      callbackURL: returnTo,
-      errorCallbackURL: `/sign-in?returnTo=${encodeURIComponent(returnTo)}&error=magic-link`,
-    });
-    if (result?.error) {
-      setError(result.error.message || "The sign-in email could not be sent.");
-    } else {
-      setMessage("Check your inbox. The secure sign-in link expires in 10 minutes.");
-      setEmail("");
+    try {
+      const result = await signIn.magicLink({
+        email: email.trim(),
+        name: email.trim().split("@")[0],
+        callbackURL: returnTo,
+        errorCallbackURL: `/sign-in?returnTo=${encodeURIComponent(returnTo)}&error=magic-link`,
+      });
+      if (result?.error) {
+        setError(result.error.message || "The sign-in email could not be sent.");
+      } else {
+        setMessage("Check your inbox. The secure sign-in link expires in 10 minutes.");
+        setEmail("");
+      }
+    } catch {
+      setError("The sign-in email could not be sent. Please try again.");
+    } finally {
+      setBusy("");
     }
-    setBusy("");
+  }
+
+  if (!configuration && configurationError) {
+    return <section className="rounded-3xl border border-[#E5E7EB] p-8">
+      <h1 className="font-display text-3xl font-semibold">Sign-in unavailable</h1>
+      <p role="alert" className="mt-4 text-sm text-red-700">{configurationError}</p>
+      <button type="button" onClick={() => { setConfigurationError(""); setRetryKey((value) => value + 1); }} className="mt-6 rounded-full bg-[#1B4332] px-5 py-3 text-sm font-semibold text-white">Try again</button>
+    </section>;
   }
 
   if (isPending || !configuration) {

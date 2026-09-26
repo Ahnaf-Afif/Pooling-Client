@@ -11,28 +11,33 @@ import { getPoll, submitVote } from "@/lib/api";
 
 const dateFormatter = new Intl.DateTimeFormat("en-BD", { day: "numeric", month: "long", year: "numeric" });
 
-export default function PollPage() {
+export default function PollPage({ initialPoll = null }) {
   const { id } = useParams();
   const router = useRouter();
-  const [poll, setPoll] = useState(null);
+  const [poll, setPoll] = useState(initialPoll);
   const [selected, setSelected] = useState("");
-  const [status, setStatus] = useState("loading");
+  const [status, setStatus] = useState(initialPoll ? "ready" : "loading");
   const [error, setError] = useState("");
   const [previousVote, setPreviousVote] = useState("");
   const [alreadyVoted, setAlreadyVoted] = useState(false);
 
   useEffect(() => {
-    getPoll(id)
+    let active = true;
+    const loaded = initialPoll ? Promise.resolve({ poll: initialPoll }) : getPoll(id);
+    loaded
       .then((data) => {
+        if (!active) return;
         setPoll(data.poll);
         try { setPreviousVote(localStorage.getItem(`voted:${id}`) || ""); } catch { /* Voting still works when storage is disabled. */ }
         setStatus("ready");
       })
       .catch((requestError) => {
+        if (!active) return;
         setError(requestError.message);
         setStatus("error");
       });
-  }, [id]);
+    return () => { active = false; };
+  }, [id, initialPoll]);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -59,7 +64,7 @@ export default function PollPage() {
       <div className="mt-8"><CategoryBadge category={poll.category} /></div>
       <h1 className="font-display mt-4 text-3xl font-semibold leading-tight md:text-4xl">{poll.question}</h1>
       <p className="mt-3 text-sm text-[#9CA3AF]">{poll.totalVotes.toLocaleString("en-BD")} votes · Created {dateFormatter.format(new Date(poll.createdAt))}</p>
-      {poll.moderatedAt && <p className="mt-4 rounded-xl border border-[#E8D7A5] bg-[#FFF9E8] px-4 py-3 text-sm text-[#725B12]">This poll was edited by the moderation team to keep it within community guidelines.</p>}
+      {poll.moderatedAt && <p className="mt-4 rounded-xl border border-[#E8D7A5] bg-[#FFF9E8] px-4 py-3 text-sm text-[#725B12]">Edited by moderation on <time dateTime={poll.moderatedAt}>{dateFormatter.format(new Date(poll.moderatedAt))}</time>. Questions and choices cannot change after voting begins.</p>}
 
       {previousVote ? (
         <div className="mt-10 rounded-2xl border border-[#A7C4B5] bg-[#F0F7F4] p-6 text-center">

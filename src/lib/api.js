@@ -11,6 +11,9 @@ export class ApiError extends Error {
 async function request(path, options) {
   const response = await fetch(`${API_URL}${path}`, {
     ...options,
+    signal: options?.signal
+      ? AbortSignal.any([options.signal, AbortSignal.timeout(20_000)])
+      : AbortSignal.timeout(20_000),
     credentials: "include",
     headers: {
       ...(options?.body ? { "Content-Type": "application/json" } : {}),
@@ -32,7 +35,7 @@ export const getPolls = ({ category = "All", trending = false, page = 1, limit =
   if (trending) params.set("trending", "true");
   return request(`/polls?${params}`);
 };
-export const getPoll = (id) => request(`/polls/${encodeURIComponent(id)}`);
+export const getPoll = (id, options) => request(`/polls/${encodeURIComponent(id)}`, options);
 export const getMyPolls = ({ page = 1, limit = 24 } = {}) =>
   request(`/polls/mine?page=${page}&limit=${limit}`);
 export const getOwnedPoll = (id) => request(`/polls/mine/${encodeURIComponent(id)}`);
@@ -57,6 +60,10 @@ export const reportPoll = (id, report) =>
     body: JSON.stringify(report),
   });
 export const getAuthConfiguration = () => request("/auth-config");
+export const getSecurity = () => request("/account/security");
+export const getSessions = () => request("/account/security/sessions");
+export const securityAction = (action, body = {}) =>
+  request(`/account/security/${action}`, { method: "POST", body: JSON.stringify(body) });
 export const exportAccount = () => request("/account/export");
 export const deleteAccount = () =>
   request("/account/delete", { method: "POST", body: JSON.stringify({ confirmation: "DELETE" }) });

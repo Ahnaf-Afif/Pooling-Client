@@ -1,4 +1,5 @@
 import PollPage from "@/features/PollPage";
+import { notFound } from "next/navigation";
 import { getPollForPreview } from "@/lib/poll-metadata";
 
 export async function generateMetadata({ params }) {
@@ -31,6 +32,9 @@ export async function generateMetadata({ params }) {
   };
 }
 
-export default function Page() {
-  return <PollPage />;
+export default async function Page({ params }) {
+  const { id } = await params;
+  const poll = await getPollForPreview(id);
+  if (!poll) notFound();
+  return <PollPage key={id} initialPoll={poll} />;
 }

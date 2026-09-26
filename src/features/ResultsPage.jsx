@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useParams, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { useParams } from "next/navigation";
+import { useEffect, useState } from "react";
 
 import CategoryBadge from "@/components/CategoryBadge";
 import ReportButton from "@/components/ReportButton";
@@ -10,24 +10,43 @@ import ShareButton from "@/components/ShareButton";
 import StatusPanel from "@/components/StatusPanel";
 import { getPoll } from "@/lib/api";
 
-function Results() {
+export default function ResultsPage({ initialPoll = null }) {
   const { id } = useParams();
-  const searchParams = useSearchParams();
-  const [poll, setPoll] = useState(null);
+  const [poll, setPoll] = useState(initialPoll);
   const [error, setError] = useState("");
+  const [votedOption, setVotedOption] = useState("");
 
   useEffect(() => {
-    getPoll(id)
-      .then((data) => setPoll(data.poll))
-      .catch((requestError) => setError(requestError.message));
-  }, [id]);
+    let active = true;
+    let pending = false;
+    const controller = new AbortController();
+    async function refresh() {
+      if (pending || document.visibilityState === "hidden") return;
+      pending = true;
+      try {
+        const data = await getPoll(id, { signal: controller.signal });
+        if (active) { setPoll(data.poll); setError(""); }
+      } catch (requestError) {
+        if (!active) return;
+        setError(requestError.status === 404 ? "This poll is no longer available." : "Updates are temporarily unavailable. Retrying automatically…");
+        if (requestError.status === 404) { setPoll(null); clearInterval(timer); }
+      } finally { pending = false; }
+    }
+    Promise.resolve().then(() => {
+      if (!active) return;
+      try { setVotedOption(localStorage.getItem(`voted:${id}`) || ""); } catch { /* Results remain available without browser storage. */ }
+    });
+    const timer = setInterval(refresh, 10_000);
+    if (!initialPoll) refresh();
+    document.addEventListener("visibilitychange", refresh);
+    return () => { active = false; clearInterval(timer); controller.abort(); document.removeEventListener("visibilitychange", refresh); };
+  }, [id, initialPoll]);
 
-  if (error) return <main className="mx-auto max-w-2xl px-6 py-20"><StatusPanel title="Results unavailable" message={error} action={<Link href="/" className="text-sm font-semibold text-[#1B4332]">← Back to all polls</Link>} /></main>;
+  if (error && !poll) return <main className="mx-auto max-w-2xl px-6 py-20"><StatusPanel title="Results unavailable" message={error} action={<Link href="/" className="text-sm font-semibold text-[#1B4332]">← Back to all polls</Link>} /></main>;
   if (!poll) return <main className="mx-auto min-h-[60vh] max-w-2xl animate-pulse px-6 py-16"><div className="h-12 rounded bg-[#F3F4F6]" /><div className="mt-12 space-y-5">{[1, 2, 3].map((item) => <div key={item} className="h-14 rounded bg-[#F3F4F6]" />)}</div></main>;
 
   const sortedOptions = [...poll.options].sort((a, b) => b.votes - a.votes);
   const winner = poll.totalVotes ? sortedOptions[0] : null;
-  const votedOption = searchParams.get("voted");
   const percentage = (votes) => poll.totalVotes ? Math.round((votes / poll.totalVotes) * 100) : 0;
 
   return (
@@ -35,8 +54,9 @@ function Results() {
       <Link href="/" className="text-sm text-[#6B7280] hover:text-[#1B4332]">← All polls</Link>
       <div className="mt-8"><CategoryBadge category={poll.category} /></div>
       <h1 className="font-display mt-4 text-3xl font-semibold leading-tight md:text-4xl">{poll.question}</h1>
-      <p className="mt-3 text-sm text-[#9CA3AF]">{poll.totalVotes.toLocaleString("en-BD")} total votes · Live results</p>
-      {poll.moderatedAt && <p className="mt-4 rounded-xl border border-[#E8D7A5] bg-[#FFF9E8] px-4 py-3 text-sm text-[#725B12]">This poll was edited by the moderation team to keep it within community guidelines.</p>}
+      <p aria-live="polite" className="mt-3 text-sm text-[#6B7280]">{poll.totalVotes.toLocaleString("en-BD")} total votes · {poll.status === "active" || !poll.status ? "Updates every 10 seconds" : "Voting closed"}</p>
+      {error && <p role="status" className="mt-3 text-sm text-amber-800">{error}</p>}
+      {poll.moderatedAt && <p className="mt-4 rounded-xl border border-[#E8D7A5] bg-[#FFF9E8] px-4 py-3 text-sm text-[#725B12]">Edited by moderation on <time dateTime={poll.moderatedAt}>{new Date(poll.moderatedAt).toISOString().slice(0, 10)}</time>. Questions and choices cannot change after voting begins.</p>}
 
       {winner && (
         <section className="mt-9 rounded-2xl border border-[#A7C4B5] bg-[#F0F7F4] p-5">
@@ -70,8 +90,4 @@ function Results() {
       <div className="mt-6 text-center"><ReportButton pollId={poll.id} /></div>
     </main>
   );
-}
-
-export default function ResultsPage() {
-  return <Suspense fallback={<main className="min-h-[60vh]" />}><Results /></Suspense>;
 }

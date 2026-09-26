@@ -88,7 +88,7 @@ function ModeratePoll() {
       <h1 className="font-display mt-2 text-4xl font-semibold">Edit Poll</h1>
       <p className="mt-3 text-sm leading-6 text-[#6B7280]">Correct policy-violating content without changing vote totals. Every edit requires a reason and is recorded.</p>
 
-      <PollEditor draft={draft} setDraft={setDraft} votes={votes} busy={status === "saving"} onSave={save} />
+      <PollEditor draft={draft} setDraft={setDraft} votes={votes} busy={status === "saving"} onSave={save} resolvesReport={false} />
       {error && <p role="alert" className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
       {message && <p role="status" className="mt-5 rounded-xl border border-[#BFD5C9] bg-[#F0F7F4] px-4 py-3 text-sm text-[#1B4332]">{message}</p>}
 

@@ -30,7 +30,7 @@ const actionLabels = {
   owner_suspended: "Suspended the poll owner",
 };
 
-export function PollEditor({ draft, setDraft, votes, busy, onCancel, onSave }) {
+export function PollEditor({ draft, setDraft, votes, busy, onCancel, onSave, resolvesReport = true }) {
   const canChangeOptionCount = votes === 0;
   const updateOption = (index, value) => {
     setDraft((current) => ({
@@ -43,7 +43,7 @@ export function PollEditor({ draft, setDraft, votes, busy, onCancel, onSave }) {
     <form onSubmit={onSave} className="mt-5 space-y-4 rounded-xl border border-[#BFD5C9] bg-[#F7FBF9] p-4">
       <div>
         <label htmlFor={`question-${draft.id}`} className="mb-1.5 block text-xs font-semibold text-[#374151]">Question</label>
-        <textarea id={`question-${draft.id}`} value={draft.question} onChange={(event) => setDraft((current) => ({ ...current, question: event.target.value }))} maxLength={240} rows={2} className="w-full resize-none rounded-lg border border-[#D1D5DB] bg-white px-3 py-2 text-sm" />
+        <textarea id={`question-${draft.id}`} value={draft.question} disabled={votes > 0 || busy} onChange={(event) => setDraft((current) => ({ ...current, question: event.target.value }))} maxLength={240} rows={2} className="w-full resize-none rounded-lg border border-[#D1D5DB] bg-white px-3 py-2 text-sm disabled:bg-[#F3F4F6]" />
       </div>
       <div>
         <label htmlFor={`category-${draft.id}`} className="mb-1.5 block text-xs font-semibold text-[#374151]">Category</label>
@@ -51,7 +51,7 @@ export function PollEditor({ draft, setDraft, votes, busy, onCancel, onSave }) {
           {CATEGORIES.map((category) => <option key={category}>{category}</option>)}
         </select>
       </div>
-      <fieldset>
+      <fieldset disabled={votes > 0 || busy}>
         <legend className="mb-1.5 text-xs font-semibold text-[#374151]">Answer options</legend>
         <div className="space-y-2">
           {draft.options.map((option, index) => (
@@ -62,14 +62,14 @@ export function PollEditor({ draft, setDraft, votes, busy, onCancel, onSave }) {
           ))}
         </div>
         {canChangeOptionCount && draft.options.length < 6 && <button type="button" onClick={() => setDraft((current) => ({ ...current, options: [...current.options, ""] }))} className="mt-2 text-xs font-semibold text-[#1B4332]">+ Add option</button>}
-        {!canChangeOptionCount && <p className="mt-2 text-xs text-[#6B7280]">Labels can be corrected, but options cannot be added or removed after voting starts. Vote counts and option IDs are preserved.</p>}
+        {!canChangeOptionCount && <p className="mt-2 text-xs text-[#6B7280]">Voting has started, so the question and choices are locked. You can correct the category or remove unsafe content through the report queue.</p>}
       </fieldset>
       <div>
         <label htmlFor={`edit-note-${draft.id}`} className="mb-1.5 block text-xs font-semibold text-[#374151]">Reason for the edit</label>
         <textarea id={`edit-note-${draft.id}`} value={draft.note} onChange={(event) => setDraft((current) => ({ ...current, note: event.target.value }))} maxLength={500} rows={2} placeholder="Required for the audit history" className="w-full resize-none rounded-lg border border-[#D1D5DB] bg-white px-3 py-2 text-sm" />
       </div>
       <div className="flex flex-wrap gap-2">
-        <button type="submit" disabled={busy} className="rounded-full bg-[#1B4332] px-4 py-2 text-xs font-semibold text-white disabled:opacity-50">{busy ? "Saving…" : "Save edit & resolve"}</button>
+        <button type="submit" disabled={busy} className="rounded-full bg-[#1B4332] px-4 py-2 text-xs font-semibold text-white disabled:opacity-50">{busy ? "Saving…" : resolvesReport ? "Save edit & resolve" : "Save edit"}</button>
         {onCancel && <button type="button" onClick={onCancel} disabled={busy} className="rounded-full border border-[#D1D5DB] px-4 py-2 text-xs font-semibold text-[#374151] disabled:opacity-50">Cancel</button>}
       </div>
     </form>
