@@ -9,12 +9,13 @@ import ReportButton from "@/components/ReportButton";
 import ShareButton from "@/components/ShareButton";
 import StatusPanel from "@/components/StatusPanel";
 import { getPoll } from "@/lib/api";
+import { useMyVote } from "@/lib/use-my-vote";
 
 export default function ResultsPage({ initialPoll = null }) {
   const { id } = useParams();
   const [poll, setPoll] = useState(initialPoll);
   const [error, setError] = useState("");
-  const [votedOption, setVotedOption] = useState("");
+  const vote = useMyVote(id);
 
   useEffect(() => {
     let active = true;
@@ -32,10 +33,6 @@ export default function ResultsPage({ initialPoll = null }) {
         if (requestError.status === 404) { setPoll(null); clearInterval(timer); }
       } finally { pending = false; }
     }
-    Promise.resolve().then(() => {
-      if (!active) return;
-      try { setVotedOption(localStorage.getItem(`voted:${id}`) || ""); } catch { /* Results remain available without browser storage. */ }
-    });
     const timer = setInterval(refresh, 10_000);
     if (!initialPoll) refresh();
     document.addEventListener("visibilitychange", refresh);
@@ -56,6 +53,8 @@ export default function ResultsPage({ initialPoll = null }) {
       <h1 className="font-display mt-4 text-3xl font-semibold leading-tight md:text-4xl">{poll.question}</h1>
       <p aria-live="polite" className="mt-3 text-sm text-[#6B7280]">{poll.totalVotes.toLocaleString("en-BD")} total votes · {poll.status === "active" || !poll.status ? "Updates every 10 seconds" : "Voting closed"}</p>
       {error && <p role="status" className="mt-3 text-sm text-amber-800">{error}</p>}
+      {vote.checking && <p role="status" className="mt-3 text-sm text-[#6B7280]">Checking your vote…</p>}
+      {vote.error && <p role="status" className="mt-3 text-sm text-[#6B7280]">Your personal vote is temporarily unavailable; aggregate results are still public. <button type="button" onClick={vote.retry} className="font-semibold underline">Retry vote check</button></p>}
       {poll.moderatedAt && <p className="mt-4 rounded-xl border border-[#E8D7A5] bg-[#FFF9E8] px-4 py-3 text-sm text-[#725B12]">Edited by moderation on <time dateTime={poll.moderatedAt}>{new Date(poll.moderatedAt).toISOString().slice(0, 10)}</time>. Questions and choices cannot change after voting begins.</p>}
 
       {winner && (
@@ -73,7 +72,7 @@ export default function ResultsPage({ initialPoll = null }) {
           return (
             <div key={option.id}>
               <div className="mb-2 flex items-center justify-between gap-4 text-sm">
-                <span className={`min-w-0 truncate font-medium ${isWinner ? "text-[#1B4332]" : "text-[#374151]"}`}>{option.label}{votedOption === option.id && <span className="ml-2 rounded-full bg-[#FDF3D7] px-2 py-0.5 text-xs text-[#956D08]">Your vote</span>}</span>
+                <span className={`min-w-0 truncate font-medium ${isWinner ? "text-[#1B4332]" : "text-[#374151]"}`}>{option.label}{vote.optionId === option.id && <span className="ml-2 rounded-full bg-[#FDF3D7] px-2 py-0.5 text-xs text-[#956D08]">Your vote</span>}</span>
                 <span className="shrink-0"><strong className={isWinner ? "text-[#1B4332]" : "text-[#6B7280]"}>{percent}%</strong> <span className="text-xs text-[#9CA3AF]">({option.votes.toLocaleString("en-BD")})</span></span>
               </div>
               <div role="progressbar" aria-label={`${option.label}: ${percent}%`} aria-valuemin="0" aria-valuemax="100" aria-valuenow={percent} className="h-3 overflow-hidden rounded-full bg-[#F3F4F6]"><div className={`h-full rounded-full ${isWinner ? "bg-[#1B4332]" : "bg-[#BFC8C3]"}`} style={{ width: `${percent}%` }} /></div>

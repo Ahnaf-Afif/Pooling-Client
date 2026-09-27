@@ -22,13 +22,30 @@ PORT=3000 HOSTNAME=127.0.0.1 npm run start:standalone
 The standalone launcher copies the build's static/public assets into its output
 directory before starting Next's generated server. `npm run test:e2e` uses this
 same launcher on port 3100; install Playwright Chromium first. Browser tests use
-intercepted local fixtures, not production data. Backend auth and transactions
-are separately tested against a temporary replica set.
+intercepted local fixtures and a read-only SSR fixture on 127.0.0.1:5199, not
+production data. Backend auth and transactions are separately tested against a
+temporary replica set. Build test bundles with the isolated API target:
+
+```bash
+NEXT_PUBLIC_API_URL=/api API_INTERNAL_URL=http://127.0.0.1:5199/api API_PROXY_TARGET=http://127.0.0.1:5199 npm run build
+npm run test:e2e
+```
+
+Do not deploy that test bundle; rebuild with the real production settings for a
+release. No test fixture writes to a database or creates public posts.
 
 Public and My Polls lists require the matching cursor-enabled API release.
 Load-more follows `nextCursor`; changing category starts a new list. Missing or
 stale statistics are labeled explicitly instead of showing invented zero counts.
 Do not promote this frontend against the old numbered-page API.
+
+Poll and result pages obtain personal voting state from the private `my-vote`
+endpoint for the current account/guest, not browser-wide localStorage markers.
+Old `voted:` markers are removed when these pages load; server receipts are not
+deleted. Selected answers are no longer written to URLs or localStorage. A failed
+lookup disables voting until retry succeeds, while aggregate results stay public.
+The backend must support `my-vote` and same-choice retry responses before this
+frontend is promoted. Guest/account identity reconciliation is still pending.
 
 ## Vercel production
 

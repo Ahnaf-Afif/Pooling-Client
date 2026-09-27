@@ -37,6 +37,7 @@ export const getPolls = ({ category = "All", trending = false, cursor, limit = 1
   return request(`/polls?${params}`);
 };
 export const getPoll = (id, options) => request(`/polls/${encodeURIComponent(id)}`, options);
+export const getMyVote = (id, options) => request(`/polls/${encodeURIComponent(id)}/my-vote`, options);
 export const getMyPolls = ({ cursor, limit = 24 } = {}) => {
   const params = new URLSearchParams({ limit: String(limit) });
   if (cursor) params.set("cursor", cursor);

@@ -21,8 +21,8 @@ jobs:
         env:
           NEXT_PUBLIC_SITE_URL: https://example.com
           NEXT_PUBLIC_API_URL: /api
-          API_INTERNAL_URL: http://127.0.0.1:5000/api
-          API_PROXY_TARGET: http://127.0.0.1:5000
+          API_INTERNAL_URL: http://127.0.0.1:5199/api
+          API_PROXY_TARGET: http://127.0.0.1:5199
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
       - run: npm audit --omit=dev --audit-level=high

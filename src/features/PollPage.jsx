@@ -8,6 +8,7 @@ import CategoryBadge from "@/components/CategoryBadge";
 import ReportButton from "@/components/ReportButton";
 import StatusPanel from "@/components/StatusPanel";
 import { getPoll, submitVote } from "@/lib/api";
+import { useMyVote } from "@/lib/use-my-vote";
 
 const dateFormatter = new Intl.DateTimeFormat("en-BD", { day: "numeric", month: "long", year: "numeric" });
 
@@ -15,11 +16,12 @@ export default function PollPage({ initialPoll = null }) {
   const { id } = useParams();
   const router = useRouter();
   const [poll, setPoll] = useState(initialPoll);
-  const [selected, setSelected] = useState("");
+  const vote = useMyVote(id);
+  const [selection, setSelection] = useState(null);
+  const selected = selection?.scope === vote.scope ? selection.optionId : "";
   const [status, setStatus] = useState(initialPoll ? "ready" : "loading");
   const [error, setError] = useState("");
-  const [previousVote, setPreviousVote] = useState("");
-  const [alreadyVoted, setAlreadyVoted] = useState(false);
+  const previousVote = vote.optionId;
 
   useEffect(() => {
     let active = true;
@@ -28,7 +30,6 @@ export default function PollPage({ initialPoll = null }) {
       .then((data) => {
         if (!active) return;
         setPoll(data.poll);
-        try { setPreviousVote(localStorage.getItem(`voted:${id}`) || ""); } catch { /* Voting still works when storage is disabled. */ }
         setStatus("ready");
       })
       .catch((requestError) => {
@@ -41,16 +42,15 @@ export default function PollPage({ initialPoll = null }) {
 
   async function handleSubmit(event) {
     event.preventDefault();
-    if (!selected) return;
+    if (!selected || vote.checking || vote.error || status === "submitting") return;
     setStatus("submitting");
     setError("");
     try {
       await submitVote(id, selected);
-      try { localStorage.setItem(`voted:${id}`, selected); } catch { /* The server has already recorded the vote. */ }
-      router.push(`/poll/${id}/results?voted=${encodeURIComponent(selected)}`);
+      router.push(`/poll/${id}/results`);
     } catch (requestError) {
       setError(requestError.message);
-      if (requestError.status === 409 && /already voted/i.test(requestError.message)) setAlreadyVoted(true);
+      if (requestError.status === 409 && /already voted/i.test(requestError.message)) vote.retry();
       setStatus("ready");
     }
   }
@@ -70,25 +70,26 @@ export default function PollPage({ initialPoll = null }) {
         <div className="mt-10 rounded-2xl border border-[#A7C4B5] bg-[#F0F7F4] p-6 text-center">
           <p className="font-display text-xl font-semibold text-[#1B4332]">Your vote is recorded</p>
           <p className="mt-2 text-sm text-[#6B7280]">You can return to the live results at any time.</p>
-          <Link href={`/poll/${id}/results?voted=${encodeURIComponent(previousVote)}`} className="mt-5 inline-block rounded-full bg-[#1B4332] px-5 py-2.5 text-sm font-semibold text-white">View results</Link>
+          <Link href={`/poll/${id}/results`} className="mt-5 inline-block rounded-full bg-[#1B4332] px-5 py-2.5 text-sm font-semibold text-white">View results</Link>
         </div>
       ) : poll.status && poll.status !== "active" ? (
         <div className="mt-10 rounded-2xl border border-[#D1D5DB] bg-[#F9FAFB] p-6 text-center"><p className="font-display text-xl font-semibold">Voting is {poll.status}</p><p className="mt-2 text-sm text-[#6B7280]">This poll is no longer accepting responses.</p><Link href={`/poll/${id}/results`} className="mt-5 inline-block rounded-full bg-[#1B4332] px-5 py-2.5 text-sm font-semibold text-white">View final results</Link></div>
       ) : <form onSubmit={handleSubmit} className="mt-10">
-        <fieldset className="space-y-3">
+        {vote.checking && <p role="status" className="mb-4 text-sm text-[#6B7280]">Checking your vote…</p>}
+        {vote.error && <div className="mb-4 text-sm"><p role="alert" className="text-red-700">{vote.error}</p><button type="button" onClick={vote.retry} className="mt-2 font-semibold text-[#1B4332] underline">Retry vote check</button></div>}
+        <fieldset className="space-y-3" disabled={vote.checking || Boolean(vote.error) || status === "submitting"}>
           <legend className="sr-only">Choose your answer</legend>
           {poll.options.map((option) => (
             <label key={option.id} className={`block rounded-xl border-2 px-5 py-4 transition-colors ${selected === option.id ? "border-[#1B4332] bg-[#F0F7F4]" : "border-[#E5E7EB] hover:border-[#A7C4B5]"}`}>
               <span className="flex items-center gap-3">
-                <input type="radio" name="poll-option" value={option.id} checked={selected === option.id} onChange={() => setSelected(option.id)} className="h-5 w-5 accent-[#1B4332]" />
+                <input type="radio" name="poll-option" value={option.id} checked={selected === option.id} onChange={() => setSelection({ scope: vote.scope, optionId: option.id })} className="h-5 w-5 accent-[#1B4332]" />
                 <span className="font-medium text-[#374151]">{option.label}</span>
               </span>
             </label>
           ))}
         </fieldset>
         {error && <p role="alert" className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
-        {alreadyVoted && <Link href={`/poll/${id}/results`} className="mt-4 block text-center text-sm font-semibold text-[#1B4332] hover:underline">View results →</Link>}
-        <button type="submit" disabled={!selected || status === "submitting"} className="mt-7 w-full rounded-xl bg-[#1B4332] py-4 font-semibold text-white hover:bg-[#15362A] disabled:cursor-not-allowed disabled:bg-[#E5E7EB] disabled:text-[#9CA3AF]">{status === "submitting" ? "Submitting…" : "Submit Vote"}</button>
+        <button type="submit" disabled={!selected || vote.checking || Boolean(vote.error) || status === "submitting"} className="mt-7 w-full rounded-xl bg-[#1B4332] py-4 font-semibold text-white hover:bg-[#15362A] disabled:cursor-not-allowed disabled:bg-[#E5E7EB] disabled:text-[#9CA3AF]">{status === "submitting" ? "Submitting…" : "Submit Vote"}</button>
       </form>}
       {!previousVote && (!poll.status || poll.status === "active") && <p className="mt-4 text-center text-xs text-[#9CA3AF]">Vote once to record your response; live aggregate results are public.</p>}
       <div className="mt-8 border-t border-[#E5E7EB] pt-5 text-center"><ReportButton pollId={poll.id} /></div>
