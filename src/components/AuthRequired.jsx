@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 
 import StatusPanel from "./StatusPanel";
 import { useSession } from "@/lib/auth-client";
@@ -49,7 +49,10 @@ export default function AuthRequired({ children, message = "Sign in to continue.
   }
 
   const staffRoute = pathname.startsWith("/moderation") || pathname.startsWith("/admin");
-  if (staffRoute) return <StaffAccess>{children}</StaffAccess>;
+  const identity = `${session.user.id}:${session.user.role || "user"}`;
+  // Discard private lists/history when another tab switches accounts or roles.
+  // A different staff session also needs a fresh server-side security check.
+  if (staffRoute) return <StaffAccess key={`${identity}:${session.session.id}`}>{children}</StaffAccess>;
 
-  return children;
+  return <Fragment key={identity}>{children}</Fragment>;
 }

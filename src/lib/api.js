@@ -76,8 +76,15 @@ export const securityAction = (action, body = {}) =>
 export const exportAccount = () => request("/account/export");
 export const deleteAccount = () =>
   request("/account/delete", { method: "POST", body: JSON.stringify({ confirmation: "DELETE" }) });
-export const getReports = (status = "pending", page = 1) =>
-  request(`/moderation/reports?status=${encodeURIComponent(status)}&page=${page}`);
+export const getReports = (status = "pending", cursor) => {
+  const params = new URLSearchParams({ status });
+  if (cursor) params.set("cursor", cursor);
+  return request(`/moderation/reports?${params}`);
+};
+export const getAuditHistory = (resource, id, cursor, options) => {
+  const path = resource === "all" ? "/moderation/history" : `/moderation/${resource}/${encodeURIComponent(id)}/history`;
+  return request(`${path}${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`, options);
+};
 export const getModeratedPoll = (id) =>
   request(`/moderation/polls/${encodeURIComponent(id)}`);
 export const editModeratedPoll = (id, poll) =>
@@ -110,8 +117,9 @@ export const suspendReportedOwner = (id, note = "") =>
     method: "POST",
     body: JSON.stringify({ note }),
   });
-export const getUsers = ({ page = 1, query = "", field = "name" } = {}) => {
-  const params = new URLSearchParams({ page: String(page), field });
+export const getUsers = ({ cursor, query = "", field = "name" } = {}) => {
+  const params = new URLSearchParams({ field });
+  if (cursor) params.set("cursor", cursor);
   if (query) params.set("q", query);
   return request(`/moderation/users?${params}`);
 };

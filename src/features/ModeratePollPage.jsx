@@ -6,16 +6,15 @@ import { useEffect, useState } from "react";
 
 import AuthRequired from "@/components/AuthRequired";
 import StatusPanel from "@/components/StatusPanel";
+import AuditHistory from "@/components/AuditHistory";
 import { PollEditor } from "@/features/ModerationPage";
 import { editModeratedPoll, getModeratedPoll } from "@/lib/api";
-
-const dateFormatter = new Intl.DateTimeFormat("en-BD", { dateStyle: "medium", timeStyle: "short" });
 
 function ModeratePoll() {
   const { slug } = useParams();
   const [draft, setDraft] = useState(null);
   const [votes, setVotes] = useState(0);
-  const [history, setHistory] = useState([]);
+  const [historyRevision, setHistoryRevision] = useState(0);
   const [status, setStatus] = useState("loading");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -33,7 +32,6 @@ function ModeratePoll() {
           note: "",
         });
         setVotes(data.poll.totalVotes);
-        setHistory(data.history);
         setStatus("ready");
       })
       .catch((requestError) => {
@@ -68,7 +66,7 @@ function ModeratePoll() {
         options: data.poll.options.map((option) => option.label),
         note: "",
       });
-      setHistory((current) => [data.action, ...current]);
+      setHistoryRevision((value) => value + 1);
       setMessage(data.message);
       setStatus("ready");
     } catch (requestError) {
@@ -92,14 +90,7 @@ function ModeratePoll() {
       {error && <p role="alert" className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
       {message && <p role="status" className="mt-5 rounded-xl border border-[#BFD5C9] bg-[#F0F7F4] px-4 py-3 text-sm text-[#1B4332]">{message}</p>}
 
-      <section className="mt-10 border-t border-[#E5E7EB] pt-7">
-        <h2 className="font-display text-xl font-semibold">Edit history</h2>
-        {history.length === 0 ? <p className="mt-3 text-sm text-[#6B7280]">No staff edits have been recorded for this poll.</p> : (
-          <ol className="mt-4 space-y-4 border-l border-[#D1D5DB] pl-4">
-            {history.map((entry) => <li key={entry.id} className="text-sm leading-6 text-[#6B7280]"><span className="font-semibold text-[#374151]">{entry.actorName}</span> changed {entry.changedFields.join(", ")}<br /><time className="text-xs">{dateFormatter.format(new Date(entry.createdAt))}</time>{entry.note && <p className="mt-1 text-[#4B5563]">“{entry.note}”</p>}</li>)}
-          </ol>
-        )}
-      </section>
+      <AuditHistory key={`${slug}:${historyRevision}`} resource="polls" id={slug} title="Poll action history" />
     </main>
   );
 }

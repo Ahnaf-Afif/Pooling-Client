@@ -6,24 +6,19 @@ import { useEffect, useState } from "react";
 import AuthRequired from "@/components/AuthRequired";
 import StatusPanel from "@/components/StatusPanel";
 import RecoveryRequests from "@/components/RecoveryRequests";
+import AuditHistory from "@/components/AuditHistory";
+import CursorPager from "@/components/CursorPager";
 import { getUsers, reactivateUser, suspendUser, updateUserRole } from "@/lib/api";
 
 const ROLES = ["user", "moderator", "admin"];
 const dateFormatter = new Intl.DateTimeFormat("en-BD", { dateStyle: "medium", timeStyle: "short" });
-const actionLabels = {
-  owner_suspended: "Suspended after a poll report",
-  user_suspended: "Suspended this account",
-  user_reactivated: "Reactivated this account",
-  role_changed: "Changed this account's role",
-  factor_recovered: "Approved authenticator recovery; revoked all sessions",
-};
 
 function AdminUsers() {
   const [users, setUsers] = useState([]);
   const [selfId, setSelfId] = useState("");
-  const [page, setPage] = useState(1);
-  const [pages, setPages] = useState(1);
-  const [total, setTotal] = useState(0);
+  const [cursors, setCursors] = useState([null]);
+  const [nextCursor, setNextCursor] = useState(null);
+  const cursor = cursors.at(-1);
   const [query, setQuery] = useState("");
   const [field, setField] = useState("name");
   const [search, setSearch] = useState({ query: "", field: "name" });
@@ -35,13 +30,12 @@ function AdminUsers() {
 
   useEffect(() => {
     let active = true;
-    getUsers({ page, query: search.query, field: search.field })
+    getUsers({ cursor, query: search.query, field: search.field })
       .then((data) => {
         if (!active) return;
         setUsers(data.users);
         setSelfId(data.selfId);
-        setPages(data.pages);
-        setTotal(data.total);
+        setNextCursor(data.nextCursor);
         setStatus("ready");
       })
       .catch((requestError) => {
@@ -50,9 +44,10 @@ function AdminUsers() {
         setStatus(requestError.status === 403 ? "forbidden" : "error");
       });
     return () => { active = false; };
-  }, [page, reloadKey, search]);
+  }, [cursor, reloadKey, search]);
 
   function reload() {
+    setError("");
     setStatus("loading");
     setReloadKey((value) => value + 1);
   }
@@ -60,7 +55,7 @@ function AdminUsers() {
   function submitSearch(event) {
     event.preventDefault();
     setError("");
-    setPage(1);
+    setCursors([null]);
     setStatus("loading");
     setSearch({ query: query.trim(), field });
   }
@@ -118,19 +113,20 @@ function AdminUsers() {
       </div>
 
       {status === "ready" && <RecoveryRequests />}
+      {status === "ready" && <AuditHistory key={`all:${reloadKey}`} resource="all" title="Complete moderation audit log" />}
 
       <form onSubmit={submitSearch} className="mt-7 flex flex-col gap-3 rounded-2xl bg-[#F9FAFB] p-4 sm:flex-row">
         <select value={field} onChange={(event) => setField(event.target.value)} aria-label="Search field" className="rounded-xl border border-[#D1D5DB] bg-white px-3 py-2.5 text-sm">
           <option value="name">Name</option>
           <option value="email">Email</option>
         </select>
-        <input value={query} onChange={(event) => setQuery(event.target.value)} maxLength={160} placeholder={`Search by ${field}`} className="min-w-0 flex-1 rounded-xl border border-[#D1D5DB] bg-white px-4 py-2.5 text-sm" />
+        <input aria-label="Search accounts" value={query} onChange={(event) => setQuery(event.target.value)} maxLength={160} placeholder={`Search by ${field}`} className="min-w-0 flex-1 rounded-xl border border-[#D1D5DB] bg-white px-4 py-2.5 text-sm" />
         <button type="submit" className="rounded-xl bg-[#1B4332] px-5 py-2.5 text-sm font-semibold text-white">Search</button>
-        {search.query && <button type="button" onClick={() => { setQuery(""); setPage(1); setStatus("loading"); setSearch({ query: "", field }); }} className="px-3 py-2 text-sm font-semibold text-[#6B7280]">Clear</button>}
+        {search.query && <button type="button" onClick={() => { setQuery(""); setCursors([null]); setStatus("loading"); setSearch({ query: "", field }); }} className="px-3 py-2 text-sm font-semibold text-[#6B7280]">Clear</button>}
       </form>
 
       {error && <p role="alert" className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
-      {status === "ready" && <p className="mt-6 text-sm text-[#6B7280]">{total.toLocaleString("en-BD")} account{total === 1 ? "" : "s"}</p>}
+      {status === "ready" && <p className="mt-6 text-sm text-[#6B7280]">Showing {users.length} account{users.length === 1 ? "" : "s"} on this page.</p>}
 
       <section className="mt-4 space-y-4" aria-label="User accounts">
         {status === "loading" && Array.from({ length: 4 }, (_, index) => <div key={index} className="h-64 animate-pulse rounded-2xl bg-[#F3F4F6]" />)}
@@ -170,26 +166,13 @@ function AdminUsers() {
                 </div>
               )}
 
-              {user.history.length > 0 && (
-                <details className="mt-5 rounded-xl bg-[#F9FAFB] px-4 py-3">
-                  <summary className="cursor-pointer text-xs font-semibold text-[#374151]">Recent admin history ({user.history.length})</summary>
-                  <ol className="mt-3 space-y-3 border-l border-[#D1D5DB] pl-4">
-                    {user.history.map((entry) => <li key={entry.id} className="text-xs leading-5 text-[#6B7280]"><span className="font-semibold text-[#374151]">{entry.actorName}</span> · {actionLabels[entry.action] || entry.action.replaceAll("_", " ")}<br /><time>{dateFormatter.format(new Date(entry.createdAt))}</time>{entry.previousRole && ` · ${entry.previousRole} → ${entry.newRole}`}{entry.note && entry.action !== "role_changed" && <p className="mt-1 text-[#4B5563]">“{entry.note}”</p>}</li>)}
-                  </ol>
-                </details>
-              )}
+              <AuditHistory key={`${user.id}:${reloadKey}`} resource="users" id={user.id} title="Account action history" />
             </article>
           );
         })}
       </section>
 
-      {status === "ready" && pages > 1 && (
-        <nav aria-label="User pages" className="mt-8 flex items-center justify-center gap-4">
-          <button type="button" onClick={() => { setStatus("loading"); setPage((value) => value - 1); }} disabled={page === 1} className="rounded-full border border-[#D1D5DB] px-4 py-2 text-sm font-semibold disabled:opacity-40">Previous</button>
-          <span className="text-sm text-[#6B7280]">Page {page} of {pages}</span>
-          <button type="button" onClick={() => { setStatus("loading"); setPage((value) => value + 1); }} disabled={page === pages} className="rounded-full border border-[#D1D5DB] px-4 py-2 text-sm font-semibold disabled:opacity-40">Next</button>
-        </nav>
-      )}
+      <CursorPager cursors={cursors} nextCursor={status === "ready" ? nextCursor : null} disabled={Boolean(busyId) || (status !== "ready" && status !== "error")} label="User pages" onChange={(values) => { setStatus("loading"); setError(""); setCursors(values); }} />
     </main>
   );
 }

@@ -39,6 +39,16 @@ Load-more follows `nextCursor`; changing category starts a new list. Missing or
 stale statistics are labeled explicitly instead of showing invented zero counts.
 Do not promote this frontend against the old numbered-page API.
 
+Staff report/user lists now also use cursor navigation without a fixed page cap.
+Report, poll and account action histories load on demand and offer Previous/Next
+navigation through all retained records. Administrators can open the complete
+retained audit log from User management. Histories include before/after snapshots
+and remain private. Failed page loads can be retried without losing the cursor;
+changing a queue/search resets it. Promote with the matching backend and verify
+index migration `2026-09-staff-history-v6` first. The old embedded `history`,
+numbered `pages`, and exact `total` response fields are no longer used by staff
+lists. Audit storage immutability and retention policy are separate concerns.
+
 Poll and result pages obtain personal voting state from the private `my-vote`
 endpoint for the current account/guest, not browser-wide localStorage markers.
 Old `voted:` markers are removed when these pages load; server receipts are not

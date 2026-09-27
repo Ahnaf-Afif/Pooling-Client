@@ -6,6 +6,8 @@ import { useEffect, useState } from "react";
 
 import AuthRequired from "@/components/AuthRequired";
 import StatusPanel from "@/components/StatusPanel";
+import AuditHistory from "@/components/AuditHistory";
+import CursorPager from "@/components/CursorPager";
 import {
   addReportNote,
   editReportedPoll,
@@ -21,14 +23,6 @@ const dateFormatter = new Intl.DateTimeFormat("en-BD", {
   dateStyle: "medium",
   timeStyle: "short",
 });
-const actionLabels = {
-  note_added: "Added an internal note",
-  report_dismissed: "Dismissed the report and kept the poll",
-  report_reopened: "Reopened the report",
-  poll_edited: "Edited the poll and resolved the report",
-  poll_removed: "Removed the poll and resolved the report",
-  owner_suspended: "Suspended the poll owner",
-};
 
 export function PollEditor({ draft, setDraft, votes, busy, onCancel, onSave, resolvesReport = true }) {
   const canChangeOptionCount = votes === 0;
@@ -88,17 +82,18 @@ function ModerationQueue() {
   const [editing, setEditing] = useState(null);
   const [pollLookup, setPollLookup] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
-  const [page, setPage] = useState(1);
-  const [pages, setPages] = useState(1);
+  const [cursors, setCursors] = useState([null]);
+  const [nextCursor, setNextCursor] = useState(null);
+  const cursor = cursors.at(-1);
 
   useEffect(() => {
     let active = true;
-    getReports(activeStatus, page)
+    getReports(activeStatus, cursor)
       .then((data) => {
         if (!active) return;
         setReports(data.reports);
         setRole(data.role);
-        setPages(data.pages || 1);
+        setNextCursor(data.nextCursor);
         setStatus("ready");
       })
       .catch((requestError) => {
@@ -107,12 +102,13 @@ function ModerationQueue() {
         setStatus(requestError.status === 403 ? "forbidden" : "error");
       });
     return () => { active = false; };
-  }, [activeStatus, page, reloadKey]);
+  }, [activeStatus, cursor, reloadKey]);
 
   function reload() {
+    setError("");
     setEditing(null);
     setStatus("loading");
-    setPage(1);
+    setCursors([null]);
     setReloadKey((value) => value + 1);
   }
 
@@ -196,7 +192,7 @@ function ModerationQueue() {
       </div>
 
       <div className="mt-7 flex flex-wrap gap-2">
-        {STATUSES.map((item) => <button key={item} type="button" onClick={() => { setStatus("loading"); setError(""); setEditing(null); setPage(1); setActiveStatus(item); }} className={`rounded-full border px-4 py-2 text-sm font-semibold capitalize ${activeStatus === item ? "border-[#1B4332] bg-[#1B4332] text-white" : "border-[#E5E7EB] text-[#6B7280]"}`}>{item}</button>)}
+        {STATUSES.map((item) => <button key={item} type="button" aria-pressed={activeStatus === item} disabled={Boolean(busyId)} onClick={() => { setActiveStatus(item); reload(); }} className={`rounded-full border px-4 py-2 text-sm font-semibold capitalize ${activeStatus === item ? "border-[#1B4332] bg-[#1B4332] text-white" : "border-[#E5E7EB] text-[#6B7280]"}`}>{item}</button>)}
       </div>
 
       <form onSubmit={openPollEditor} className="mt-6 flex flex-col gap-2 rounded-2xl bg-[#F9FAFB] p-4 sm:flex-row sm:items-center">
@@ -208,7 +204,7 @@ function ModerationQueue() {
       {error && status !== "forbidden" && <p role="alert" className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
       <section className="mt-8 space-y-4" aria-label={`${activeStatus} reports`}>
         {status === "loading" && Array.from({ length: 3 }, (_, index) => <div key={index} className="h-56 animate-pulse rounded-2xl bg-[#F3F4F6]" />)}
-        {status === "error" && <StatusPanel title="Reports unavailable" message="The moderation queue could not be loaded." action={<button type="button" onClick={reload} className="rounded-full bg-[#1B4332] px-5 py-2.5 text-sm font-semibold text-white">Try again</button>} />}
+        {status === "error" && <StatusPanel title="Reports unavailable" message="The moderation queue could not be loaded." action={<button type="button" onClick={() => { setStatus("loading"); setError(""); setReloadKey((value) => value + 1); }} className="rounded-full bg-[#1B4332] px-5 py-2.5 text-sm font-semibold text-white">Try again</button>} />}
         {status === "ready" && reports.length === 0 && <StatusPanel title={`No ${activeStatus} reports`} message="There is nothing in this queue right now." />}
         {status === "ready" && reports.map((report) => {
           const isEditing = editing?.id === report.id;
@@ -226,14 +222,7 @@ function ModerationQueue() {
 
               {isEditing && <PollEditor draft={editing} setDraft={setEditing} votes={report.poll.totalVotes} busy={busyId.endsWith(":edit")} onCancel={() => setEditing(null)} onSave={saveEdit} />}
 
-              {report.history.length > 0 && (
-                <details className="mt-5 rounded-xl bg-[#F9FAFB] px-4 py-3">
-                  <summary className="cursor-pointer text-xs font-semibold text-[#374151]">Action history ({report.history.length})</summary>
-                  <ol className="mt-3 space-y-3 border-l border-[#D1D5DB] pl-4">
-                    {report.history.map((entry) => <li key={entry.id} className="text-xs leading-5 text-[#6B7280]"><span className="font-semibold text-[#374151]">{entry.actorName}</span> · {actionLabels[entry.action] || entry.action.replaceAll("_", " ")}<br /><time>{dateFormatter.format(new Date(entry.createdAt))}</time>{entry.changedFields.length > 0 && ` · Changed ${entry.changedFields.join(", ")}`}{entry.note && <p className="mt-1 text-[#4B5563]">“{entry.note}”</p>}{entry.before && entry.after && <details className="mt-2 rounded-lg border border-[#E5E7EB] bg-white p-2"><summary className="cursor-pointer font-semibold text-[#374151]">View recorded change</summary><div className="mt-2 grid gap-2 text-[11px] sm:grid-cols-2"><div><p className="font-semibold text-[#6B7280]">Before</p><pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap rounded bg-[#F9FAFB] p-2">{JSON.stringify(entry.before, null, 2)}</pre></div><div><p className="font-semibold text-[#6B7280]">After</p><pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap rounded bg-[#F9FAFB] p-2">{JSON.stringify(entry.after, null, 2)}</pre></div></div></details>}</li>)}
-                  </ol>
-                </details>
-              )}
+              <AuditHistory key={`${report.id}:${reloadKey}`} resource="reports" id={report.id} />
 
               <div className="mt-5">
                 <label htmlFor={`note-${report.id}`} className="mb-1.5 block text-xs font-semibold text-[#374151]">Internal note</label>
@@ -254,7 +243,7 @@ function ModerationQueue() {
           );
         })}
       </section>
-      {status === "ready" && pages > 1 && <nav aria-label="Moderation pages" className="mt-8 flex items-center justify-center gap-3"><button type="button" disabled={page === 1} onClick={() => { setStatus("loading"); setPage((value) => value - 1); }} className="rounded-full border border-[#D1D5DB] px-4 py-2 text-xs font-semibold text-[#374151] disabled:opacity-40">Previous</button><span className="text-xs text-[#6B7280]">Page {page} of {pages}</span><button type="button" disabled={page === pages} onClick={() => { setStatus("loading"); setPage((value) => value + 1); }} className="rounded-full border border-[#D1D5DB] px-4 py-2 text-xs font-semibold text-[#374151] disabled:opacity-40">Next</button></nav>}
+      <CursorPager cursors={cursors} nextCursor={status === "ready" ? nextCursor : null} disabled={Boolean(busyId) || (status !== "ready" && status !== "error")} label="Moderation pages" onChange={(values) => { setStatus("loading"); setError(""); setEditing(null); setCursors(values); }} />
     </main>
   );
 }
