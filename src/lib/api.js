@@ -66,6 +66,10 @@ export const reportPoll = (id, report) =>
   });
 export const getAuthConfiguration = () => request("/auth-config");
 export const getSecurity = () => request("/account/security");
+export const getRecoveryRequests = (after) => request(`/moderation/recovery${after ? `?after=${encodeURIComponent(after)}` : ""}`);
+export const approveRecoveryRequest = (id, note) => request(`/moderation/recovery/${encodeURIComponent(id)}/approve`, {
+  method: "POST", body: JSON.stringify({ note, identityConfirmed: true }),
+});
 export const getSessions = () => request("/account/security/sessions");
 export const securityAction = (action, body = {}) =>
   request(`/account/security/${action}`, { method: "POST", body: JSON.stringify(body) });

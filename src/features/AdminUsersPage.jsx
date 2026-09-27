@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import AuthRequired from "@/components/AuthRequired";
 import StatusPanel from "@/components/StatusPanel";
+import RecoveryRequests from "@/components/RecoveryRequests";
 import { getUsers, reactivateUser, suspendUser, updateUserRole } from "@/lib/api";
 
 const ROLES = ["user", "moderator", "admin"];
@@ -14,6 +15,7 @@ const actionLabels = {
   user_suspended: "Suspended this account",
   user_reactivated: "Reactivated this account",
   role_changed: "Changed this account's role",
+  factor_recovered: "Approved authenticator recovery; revoked all sessions",
 };
 
 function AdminUsers() {
@@ -114,6 +116,8 @@ function AdminUsers() {
         </div>
         <Link href="/moderation" className="w-fit rounded-full border border-[#1B4332] px-4 py-2 text-xs font-semibold text-[#1B4332]">Report queue</Link>
       </div>
+
+      {status === "ready" && <RecoveryRequests />}
 
       <form onSubmit={submitSearch} className="mt-7 flex flex-col gap-3 rounded-2xl bg-[#F9FAFB] p-4 sm:flex-row">
         <select value={field} onChange={(event) => setField(event.target.value)} aria-label="Search field" className="rounded-xl border border-[#D1D5DB] bg-white px-3 py-2.5 text-sm">

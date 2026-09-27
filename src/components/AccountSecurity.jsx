@@ -36,9 +36,10 @@ export default function AccountSecurity() {
     setBusy(true);
     setError("");
     setMessage("");
+    if (action === "recovery-codes") setSetup(null);
     try {
       const result = await securityAction(action, body);
-      if (action === "enable") setSetup(result);
+      if (action === "enable" || action === "recovery-codes") setSetup(result);
       if (action === "verify") {
         setCode("");
         // Hide the authenticator secret after enrollment; recovery codes remain
@@ -79,6 +80,25 @@ export default function AccountSecurity() {
       </div>}
       {security?.verified && <p role="status" className="mt-4 text-sm text-[#1B4332]">Verified for sensitive actions.{security.staff && <> <Link href="/moderation" className="font-semibold underline">Open moderation</Link></>}</p>}
       {security?.enabled && !security.staff && <button type="button" className={`${buttonClass} mt-4`} disabled={busy} onClick={() => { if (window.confirm("Disable your authenticator and sign out other sessions?")) act("disable"); }}>Disable authenticator</button>}
+
+      {security?.enabled && <div className="mt-6 space-y-3 rounded-xl border border-[#D1D5DB] p-4">
+        <h3 className="font-semibold">Recovery options</h3>
+        <p className="text-sm leading-6 text-[#6B7280]">Verify an authenticator or unused recovery code first to replace your recovery codes. Replacement invalidates every old code and signs out other devices. If the response is lost, verify again and replace them once more.</p>
+        <button type="button" className={buttonClass} disabled={busy || !security.verified} onClick={() => {
+          if (window.confirm("Replace all recovery codes and sign out other devices? Save the new codes before leaving this page.")) act("recovery-codes", { confirmation: "REPLACE" });
+        }}>Replace recovery codes</button>
+        <details>
+          <summary className="cursor-pointer text-sm font-semibold">Lost both your authenticator and recovery codes?</summary>
+          <p className="mt-3 text-sm leading-6 text-[#6B7280]">Sign out and sign in again, then request recovery within 15 minutes. Contact a known administrator separately with your reference. They must independently verify your identity. Requests expire after 24 hours; no email is sent automatically. If approved, you must sign in again and set up a new authenticator. Staff access stays locked until setup and verification are complete.</p>
+          {security.recovery?.status === "pending" ? <div className="mt-3 text-sm">
+            <p>Pending reference: <code className="break-all">{security.recovery.requestId}</code></p>
+            <p>Expires {new Date(security.recovery.expiresAt).toLocaleString()}</p>
+            <button type="button" className={`${buttonClass} mt-3`} disabled={busy} onClick={() => act("recovery/cancel")}>Cancel recovery request</button>
+          </div> : <button type="button" className={`${buttonClass} mt-3`} disabled={busy} onClick={() => {
+            if (window.confirm("Request independently verified recovery? This does not disable your authenticator immediately.")) act("recovery", { confirmation: "RECOVER" });
+          }}>Request authenticator recovery</button>}
+        </details>
+      </div>}
 
       <h3 className="mt-8 font-semibold">Signed-in devices</h3>
       <ul className="mt-3 space-y-3">{sessions.map((session) => <li key={session.id} className="rounded-xl border border-[#E5E7EB] p-3 text-sm">
