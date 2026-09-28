@@ -104,6 +104,23 @@ The production configuration now uses `NEXT_PUBLIC_API_URL=/api`, `API_PROXY_TAR
 
 If any variable is also set in the Vercel project settings, set it to the same value. Project settings override the file during a build. Redeploy after changing these build-time values. Never add the MongoDB connection string to this frontend project.
 
+Production Vercel builds now run a prebuild configuration check. Set
+`NEXT_PUBLIC_SUPPORT_EMAIL` to a real mailbox that someone monitors, in the
+frontend project's **Production** environment. The checked-in
+`support@example.com` value is only a placeholder and deliberately fails the
+production check. The check also requires the public HTTPS frontend/backend
+origins to match the first-party `/api` proxy configuration. For a local release
+preflight, supply the intended public values and run `VERCEL_ENV=production npm
+run prebuild`; the check does not contact the mailbox or prove that it is
+monitored. Vercel's build command is pinned in `vercel.json` so the prebuild
+check runs there. Do not promote a candidate until the operator confirms the
+support address and reviews the rendered policy pages.
+
+Weekly Dependabot pull requests are configured for npm packages and GitHub
+Actions, with five open version-update PRs per ecosystem. This takes effect
+only after the client repository is pushed to its default branch; updates still
+require review and green checks.
+
 Poll links expose their question and a generated card image through Open Graph and Twitter metadata. Messaging apps decide whether and when to show or refresh that preview; the share dialog also shows the card before sending the poll URL. Keep `NEXT_PUBLIC_SITE_URL` set to the public HTTPS frontend origin so preview image links point to the right deployment.
 
 Better Auth sessions power account ownership. Anyone may browse, vote, view results, share, and report without signing in. Verified accounts can create polls, and My Polls follows the owner across devices. Owners can edit before the first vote, then close, archive, or soft-delete their polls. Moderators receive a protected report queue with private notes, action history, edit/remove resolution workflows, and a direct editor for any poll link or slug. Administrators also receive searchable user management for persistent roles, suspension, and reactivation.
