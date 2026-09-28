@@ -45,7 +45,7 @@ navigation through all retained records. Administrators can open the complete
 retained audit log from User management. Histories include before/after snapshots
 and remain private. Failed page loads can be retried without losing the cursor;
 changing a queue/search resets it. Promote with the matching backend and verify
-index migration `2026-09-staff-history-v6` first. The old embedded `history`,
+index migration `2026-09-command-retries-v7` first. The old embedded `history`,
 numbered `pages`, and exact `total` response fields are no longer used by staff
 lists. Audit storage immutability and retention policy are separate concerns.
 
@@ -56,6 +56,31 @@ deleted. Selected answers are no longer written to URLs or localStorage. A faile
 lookup disables voting until retry succeeds, while aggregate results stay public.
 The backend must support `my-vote` and same-choice retry responses before this
 frontend is promoted. Guest/account identity reconciliation is still pending.
+
+## Safe command retries
+
+Poll creation and custom moderation writes use account-scoped command keys.
+Unconfirmed requests retain their key through reloads in the same browser tab;
+re-enter identical data to retry. Confirmed success clears the key so a later
+intentional action is new. No automatic write retry occurs. Session storage
+contains only request digests, random keys and timestamps, never form content,
+notes, account IDs, session tokens or responses. Storage is bounded to 32 pending
+commands. Do not clear it after an uncertain response: first check My Polls or
+the moderation history. Changed data, another tab/device or cleared storage is
+a new intent and can create another action.
+
+Browser retries stop at 23 hours (server receipts expire at 24 hours), or if
+storage is unavailable/corrupt/full. Check the existing outcome before starting
+again in a new tab. Current authentication and staff verification still apply.
+The UI requires a valid response and the backend replay acknowledgement; an old
+backend is incompatible. Deploy the matching server and verify migration v7.
+Owner changes and reports are not covered by this command protocol; votes and
+recovery approvals have separate retry handling.
+
+`npm test` runs isolated command tests; browser checks cover response loss,
+reloads, malformed success responses, account changes and moderation notes.
+These fixtures supplement, not replace, backend replica-set and real-provider
+release verification.
 
 ## Vercel production
 

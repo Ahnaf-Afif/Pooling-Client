@@ -1,3 +1,5 @@
+import { runCommand } from "./commands.js";
+
 const API_URL = (process.env.NEXT_PUBLIC_API_URL || "/api").replace(/\/$/, "");
 
 export class ApiError extends Error {
@@ -8,7 +10,7 @@ export class ApiError extends Error {
   }
 }
 
-async function request(path, options) {
+async function request(path, options, validate) {
   const response = await fetch(`${API_URL}${path}`, {
     ...options,
     signal: options?.signal
@@ -21,12 +23,32 @@ async function request(path, options) {
     },
     cache: "no-store",
   });
-  const data = response.status === 204 ? {} : await response.json().catch(() => ({}));
+  let data;
+  try { data = response.status === 204 ? {} : await response.json(); }
+  catch {
+    throw new ApiError("The server returned an unreadable response. The action may have completed; retry unchanged data in this tab.", response.ok ? 502 : response.status);
+  }
 
   if (!response.ok) {
-    throw new ApiError(data.message || "Unable to complete the request", response.status);
+    throw new ApiError(data?.message || "Unable to complete the request", response.status);
+  }
+  if (validate && (!validate(data) || !["true", "false"].includes(response.headers.get("Idempotency-Replayed")))) {
+    throw new ApiError("The server did not confirm this action. Retry unchanged data in this tab, or check its history before submitting anything new.", 502);
   }
   return data;
+}
+
+async function command(path, options, field = "message") {
+  const session = await request("/auth/get-session");
+  if (!session?.user?.id) throw new ApiError("Sign in before submitting this action", 401);
+  return runCommand(session.user.id, path, options, (prepared) => request(path, prepared, (data) => {
+    if (field === "poll") return typeof data?.poll?.id === "string" || typeof data?.poll?.slug === "string";
+    if (field === "action" || field === "user") return typeof data?.[field]?.id === "string";
+    return typeof data?.message === "string";
+  }).catch((error) => {
+    if (error instanceof ApiError) throw error;
+    throw new ApiError("The action could not be confirmed. Keep the data unchanged and retry in this tab, or check its history before starting a new action.", 0);
+  }));
 }
 
 export const getPolls = ({ category = "All", trending = false, cursor, limit = 12 } = {}) => {
@@ -45,7 +67,7 @@ export const getMyPolls = ({ cursor, limit = 24 } = {}) => {
 };
 export const getOwnedPoll = (id) => request(`/polls/mine/${encodeURIComponent(id)}`);
 export const createPoll = (poll) =>
-  request("/polls", { method: "POST", body: JSON.stringify(poll) });
+  command("/polls", { method: "POST", body: JSON.stringify(poll) }, "poll");
 export const updatePoll = (id, poll) =>
   request(`/polls/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(poll) });
 export const closePoll = (id) =>
@@ -88,32 +110,32 @@ export const getAuditHistory = (resource, id, cursor, options) => {
 export const getModeratedPoll = (id) =>
   request(`/moderation/polls/${encodeURIComponent(id)}`);
 export const editModeratedPoll = (id, poll) =>
-  request(`/moderation/polls/${encodeURIComponent(id)}`, {
+  command(`/moderation/polls/${encodeURIComponent(id)}`, {
     method: "PATCH",
     body: JSON.stringify(poll),
-  });
+  }, "poll");
 export const updateReport = (id, status, note = "") =>
-  request(`/moderation/reports/${encodeURIComponent(id)}`, {
+  command(`/moderation/reports/${encodeURIComponent(id)}`, {
     method: "PATCH",
     body: JSON.stringify({ status, note }),
   });
 export const addReportNote = (id, note) =>
-  request(`/moderation/reports/${encodeURIComponent(id)}/notes`, {
+  command(`/moderation/reports/${encodeURIComponent(id)}/notes`, {
     method: "POST",
     body: JSON.stringify({ note }),
-  });
+  }, "action");
 export const editReportedPoll = (id, poll) =>
-  request(`/moderation/reports/${encodeURIComponent(id)}/poll`, {
+  command(`/moderation/reports/${encodeURIComponent(id)}/poll`, {
     method: "PATCH",
     body: JSON.stringify(poll),
   });
 export const removeReportedPoll = (id, note = "") =>
-  request(`/moderation/reports/${encodeURIComponent(id)}/remove-poll`, {
+  command(`/moderation/reports/${encodeURIComponent(id)}/remove-poll`, {
     method: "POST",
     body: JSON.stringify({ note }),
   });
 export const suspendReportedOwner = (id, note = "") =>
-  request(`/moderation/reports/${encodeURIComponent(id)}/suspend-owner`, {
+  command(`/moderation/reports/${encodeURIComponent(id)}/suspend-owner`, {
     method: "POST",
     body: JSON.stringify({ note }),
   });
@@ -124,17 +146,17 @@ export const getUsers = ({ cursor, query = "", field = "name" } = {}) => {
   return request(`/moderation/users?${params}`);
 };
 export const updateUserRole = (id, role) =>
-  request(`/moderation/users/${encodeURIComponent(id)}/role`, {
+  command(`/moderation/users/${encodeURIComponent(id)}/role`, {
     method: "PATCH",
     body: JSON.stringify({ role }),
-  });
+  }, "user");
 export const suspendUser = (id, note) =>
-  request(`/moderation/users/${encodeURIComponent(id)}/suspend`, {
+  command(`/moderation/users/${encodeURIComponent(id)}/suspend`, {
     method: "POST",
     body: JSON.stringify({ note }),
-  });
+  }, "user");
 export const reactivateUser = (id, note = "") =>
-  request(`/moderation/users/${encodeURIComponent(id)}/reactivate`, {
+  command(`/moderation/users/${encodeURIComponent(id)}/reactivate`, {
     method: "POST",
     body: JSON.stringify({ note }),
-  });
+  }, "user");
