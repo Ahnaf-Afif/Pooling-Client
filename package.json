@@ -20,7 +20,7 @@
     "@next/env": "16.3.5",
     "better-auth": "^1.7.5",
     "next": "16.3.5",
-    "react": "19.2.8",
+    "react": "19.3.0",
     "react-dom": "19.2.8",
     "react-qr-code": "^2.2.0"
   },
