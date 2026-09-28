@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 
 import AuthRequired from "@/components/AuthRequired";
 import StatusPanel from "@/components/StatusPanel";
+import EditConflict from "@/components/EditConflict";
 import AuditHistory from "@/components/AuditHistory";
 import { PollEditor } from "@/features/ModerationPage";
 import { editModeratedPoll, getModeratedPoll } from "@/lib/api";
@@ -18,6 +19,7 @@ function ModeratePoll() {
   const [status, setStatus] = useState("loading");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [conflict, setConflict] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -26,6 +28,7 @@ function ModeratePoll() {
         if (!active) return;
         setDraft({
           id: data.poll.slug,
+          expectedRevision: data.poll.contentRevision,
           question: data.poll.question,
           category: data.poll.category,
           options: data.poll.options.map((option) => option.label),
@@ -41,6 +44,17 @@ function ModeratePoll() {
       });
     return () => { active = false; };
   }, [slug]);
+
+  async function reloadLatest() {
+    const { poll } = await getModeratedPoll(slug);
+    setDraft({ id: poll.slug, expectedRevision: poll.contentRevision, question: poll.question,
+      category: poll.category, options: poll.options.map((option) => option.label), note: "" });
+    setVotes(poll.totalVotes);
+    setHistoryRevision((value) => value + 1);
+    setError("");
+    setMessage("");
+    setConflict(false);
+  }
 
   async function save(event) {
     event.preventDefault();
@@ -58,19 +72,24 @@ function ModeratePoll() {
         category: draft.category,
         options,
         note: draft.note,
+        expectedRevision: draft.expectedRevision,
       });
       setDraft({
         id: data.poll.slug,
+        expectedRevision: data.poll.contentRevision,
         question: data.poll.question,
         category: data.poll.category,
         options: data.poll.options.map((option) => option.label),
         note: "",
       });
       setHistoryRevision((value) => value + 1);
+      setVotes(data.poll.totalVotes);
+      setConflict(false);
       setMessage(data.message);
       setStatus("ready");
     } catch (requestError) {
       setError(requestError.message);
+      if (requestError.code === "POLL_CHANGED") setConflict(true);
       setStatus("ready");
     }
   }
@@ -88,6 +107,7 @@ function ModeratePoll() {
 
       <PollEditor draft={draft} setDraft={setDraft} votes={votes} busy={status === "saving"} onSave={save} resolvesReport={false} />
       {error && <p role="alert" className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
+      {conflict && <EditConflict onReload={reloadLatest} />}
       {message && <p role="status" className="mt-5 rounded-xl border border-[#BFD5C9] bg-[#F0F7F4] px-4 py-3 text-sm text-[#1B4332]">{message}</p>}
 
       <AuditHistory key={`${slug}:${historyRevision}`} resource="polls" id={slug} title="Poll action history" />

@@ -6,12 +6,14 @@ import { useEffect, useState } from "react";
 
 import AuthRequired from "@/components/AuthRequired";
 import StatusPanel from "@/components/StatusPanel";
+import EditConflict from "@/components/EditConflict";
 import AuditHistory from "@/components/AuditHistory";
 import CursorPager from "@/components/CursorPager";
 import {
   addReportNote,
   editReportedPoll,
   getReports,
+  getModeratedPoll,
   removeReportedPoll,
   suspendReportedOwner,
   updateReport,
@@ -84,6 +86,7 @@ function ModerationQueue() {
   const [reloadKey, setReloadKey] = useState(0);
   const [cursors, setCursors] = useState([null]);
   const [nextCursor, setNextCursor] = useState(null);
+  const [conflict, setConflict] = useState(false);
   const cursor = cursors.at(-1);
 
   useEffect(() => {
@@ -106,6 +109,7 @@ function ModerationQueue() {
 
   function reload() {
     setError("");
+    setConflict(false);
     setEditing(null);
     setStatus("loading");
     setCursors([null]);
@@ -147,13 +151,24 @@ function ModerationQueue() {
         category: editing.category,
         options,
         note: editing.note,
+        expectedRevision: editing.expectedRevision,
       });
       reload();
     } catch (requestError) {
       setError(requestError.message);
+      if (requestError.code === "POLL_CHANGED") setConflict(true);
     } finally {
       setBusyId("");
     }
+  }
+
+  async function reloadEditedPoll() {
+    const { poll } = await getModeratedPoll(editing.pollSlug);
+    setEditing({ id: editing.id, pollSlug: poll.slug, expectedRevision: poll.contentRevision,
+      question: poll.question, category: poll.category, options: poll.options.map((option) => option.label), note: "" });
+    setReports((current) => current.map((report) => report.id === editing.id ? { ...report, poll } : report));
+    setConflict(false);
+    setError("");
   }
 
   function openPollEditor(event) {
@@ -220,7 +235,8 @@ function ModerationQueue() {
               {report.details && <p className="mt-3 rounded-lg bg-[#F9FAFB] px-3 py-2 text-sm leading-6 text-[#4B5563]">{report.details}</p>}
               <p className="mt-3 text-xs text-[#9CA3AF]">Poll status: {report.poll?.deleted ? "deleted" : report.poll?.status || "missing"}{report.poll ? ` · ${report.poll.totalVotes.toLocaleString("en-BD")} votes` : ""}</p>
 
-              {isEditing && <PollEditor draft={editing} setDraft={setEditing} votes={report.poll.totalVotes} busy={busyId.endsWith(":edit")} onCancel={() => setEditing(null)} onSave={saveEdit} />}
+              {isEditing && <PollEditor draft={editing} setDraft={setEditing} votes={report.poll.totalVotes} busy={busyId.endsWith(":edit")} onCancel={() => { setEditing(null); setConflict(false); }} onSave={saveEdit} />}
+              {isEditing && conflict && <EditConflict onReload={reloadEditedPoll} />}
 
               <AuditHistory key={`${report.id}:${reloadKey}`} resource="reports" id={report.id} />
 
@@ -234,7 +250,7 @@ function ModerationQueue() {
                 <button type="button" onClick={() => act(report, "note")} disabled={Boolean(busyId) || !(notes[report.id] || "").trim()} className="rounded-full border border-[#D1D5DB] px-4 py-2 text-xs font-semibold text-[#374151] disabled:opacity-50">Add note</button>
                 {activeStatus === "pending" ? <>
                   <button type="button" onClick={() => act(report, "dismissed")} disabled={Boolean(busyId)} className="rounded-full border border-[#D1D5DB] px-4 py-2 text-xs font-semibold text-[#374151] disabled:opacity-50">Dismiss & keep</button>
-                  {report.poll && !report.poll.deleted && <button type="button" onClick={() => setEditing({ id: report.id, question: report.poll.question, category: report.poll.category, options: report.poll.options.map((option) => option.label), note: notes[report.id] || "" })} disabled={Boolean(busyId)} className="rounded-full border border-[#1B4332] px-4 py-2 text-xs font-semibold text-[#1B4332] disabled:opacity-50">Edit & resolve</button>}
+                  {report.poll && !report.poll.deleted && <button type="button" onClick={() => { setConflict(false); setEditing({ id: report.id, pollSlug: report.pollSlug, expectedRevision: report.poll.contentRevision, question: report.poll.question, category: report.poll.category, options: report.poll.options.map((option) => option.label), note: notes[report.id] || "" }); }} disabled={Boolean(busyId)} className="rounded-full border border-[#1B4332] px-4 py-2 text-xs font-semibold text-[#1B4332] disabled:opacity-50">Edit & resolve</button>}
                   <button type="button" onClick={() => act(report, "remove")} disabled={Boolean(busyId)} className="rounded-full bg-red-700 px-4 py-2 text-xs font-semibold text-white disabled:opacity-50">{report.poll?.deleted || !report.poll ? "Resolve removed poll" : "Remove & resolve"}</button>
                   {role === "admin" && report.poll?.creatorId && <button type="button" onClick={() => act(report, "suspend")} disabled={Boolean(busyId)} className="rounded-full border border-red-300 px-4 py-2 text-xs font-semibold text-red-700 disabled:opacity-50">Suspend owner</button>}
                 </> : <button type="button" onClick={() => act(report, "pending")} disabled={Boolean(busyId)} className="rounded-full border border-[#1B4332] px-4 py-2 text-xs font-semibold text-[#1B4332] disabled:opacity-50">Reopen</button>}

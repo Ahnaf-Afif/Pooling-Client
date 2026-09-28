@@ -77,6 +77,13 @@ backend is incompatible. Deploy the matching server and verify migration v7.
 Owner changes and reports are not covered by this command protocol; votes and
 recovery approvals have separate retry handling.
 
+Owner and staff poll editors include the poll's `contentRevision` with each
+edit. If another editor changed the content first, the server rejects the stale
+draft without overwriting it; the form stays visible. The editor can discard the
+draft and load the latest poll only after explicit confirmation. Copy any text
+worth keeping before reloading. This requires a matching backend release:
+older clients omit `expectedRevision` and receive HTTP 400 from the new API.
+
 `npm test` runs isolated command tests; browser checks cover response loss,
 reloads, malformed success responses, account changes and moderation notes.
 These fixtures supplement, not replace, backend replica-set and real-provider

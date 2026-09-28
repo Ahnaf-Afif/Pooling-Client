@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 
 import AuthRequired from "@/components/AuthRequired";
 import StatusPanel from "@/components/StatusPanel";
+import EditConflict from "@/components/EditConflict";
 import { archivePoll, closePoll, deletePoll, getOwnedPoll, updatePoll } from "@/lib/api";
 
 const CATEGORIES = ["Tech", "Education", "Food", "Career", "Lifestyle", "Social"];
@@ -21,6 +22,7 @@ function ManagePoll() {
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [conflict, setConflict] = useState(false);
 
   useEffect(() => {
     getOwnedPoll(id)
@@ -47,14 +49,27 @@ function ManagePoll() {
     if (new Set(cleanOptions.map((option) => option.toLowerCase())).size !== cleanOptions.length) return setError("Each option must be different.");
     setBusy("save");
     try {
-      const data = await updatePoll(id, { question, category, options: cleanOptions });
+      const data = await updatePoll(id, { question, category, options: cleanOptions, expectedRevision: poll.contentRevision });
       setPoll(data.poll);
+      setConflict(false);
       setMessage("Poll changes saved.");
     } catch (requestError) {
       setError(requestError.message);
+      if (requestError.code === "POLL_CHANGED") setConflict(true);
     } finally {
       setBusy("");
     }
+  }
+
+  async function reloadLatest() {
+    const { poll: latest } = await getOwnedPoll(id);
+    setPoll(latest);
+    setQuestion(latest.question);
+    setCategory(latest.category);
+    setOptions(latest.options.map((option) => option.label));
+    setError("");
+    setMessage("");
+    setConflict(false);
   }
 
   async function runAction(action) {
@@ -102,6 +117,7 @@ function ManagePoll() {
       </form>
 
       {error && <p role="alert" className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
+      {conflict && <EditConflict onReload={reloadLatest} />}
       {message && <p role="status" className="mt-5 rounded-xl border border-[#BFD5C9] bg-[#F0F7F4] px-4 py-3 text-sm text-[#1B4332]">{message}</p>}
 
       <section className="mt-10 border-t border-[#E5E7EB] pt-7"><h2 className="font-display text-xl font-semibold">Poll lifecycle</h2><p className="mt-2 text-sm leading-6 text-[#6B7280]">Closing stops new votes but keeps the poll and results visible. Archiving also removes it from public listings. Delete is a soft deletion retained for moderation and integrity.</p><div className="mt-5 flex flex-wrap gap-3">{(!poll.status || poll.status === "active") && <button type="button" onClick={() => runAction("close")} disabled={Boolean(busy)} className="rounded-full border border-[#1B4332] px-5 py-2.5 text-sm font-semibold text-[#1B4332] disabled:opacity-50">{busy === "close" ? "Closing…" : "Close voting"}</button>}{poll.status !== "archived" && <button type="button" onClick={() => runAction("archive")} disabled={Boolean(busy)} className="rounded-full border border-[#D1D5DB] px-5 py-2.5 text-sm font-semibold text-[#374151] disabled:opacity-50">{busy === "archive" ? "Archiving…" : "Archive"}</button>}<button type="button" onClick={() => runAction("delete")} disabled={Boolean(busy)} className="rounded-full border border-red-200 px-5 py-2.5 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50">Delete poll</button><Link href={`/poll/${poll.id}/results`} className="rounded-full px-4 py-2.5 text-sm font-semibold text-[#1B4332] hover:underline">View results →</Link></div></section>

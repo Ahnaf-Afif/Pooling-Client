@@ -3,10 +3,11 @@ import { runCommand } from "./commands.js";
 const API_URL = (process.env.NEXT_PUBLIC_API_URL || "/api").replace(/\/$/, "");
 
 export class ApiError extends Error {
-  constructor(message, status) {
+  constructor(message, status, code) {
     super(message);
     this.name = "ApiError";
     this.status = status;
+    this.code = code;
   }
 }
 
@@ -30,7 +31,7 @@ async function request(path, options, validate) {
   }
 
   if (!response.ok) {
-    throw new ApiError(data?.message || "Unable to complete the request", response.status);
+    throw new ApiError(data?.message || "Unable to complete the request", response.status, data?.code);
   }
   if (validate && (!validate(data) || !["true", "false"].includes(response.headers.get("Idempotency-Replayed")))) {
     throw new ApiError("The server did not confirm this action. Retry unchanged data in this tab, or check its history before submitting anything new.", 502);
